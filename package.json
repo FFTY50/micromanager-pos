@@ -1,0 +1,52 @@
+{
+  "name": "micromanager-pos",
+  "version": "1.0.0",
+  "description": "Smart Edge POS Transaction Processor with Frigate Integration",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "demo": "node scripts/demo.js",
+    "mock-data": "node scripts/mock-serial-data.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "setup": "node scripts/setup.js",
+    "welcome": "node scripts/welcome.js",
+    "postinstall": "node scripts/welcome.js"
+  },
+  "keywords": [
+    "pos",
+    "transaction",
+    "parser",
+    "frigate",
+    "supabase",
+    "micromanager",
+    "retail"
+  ],
+  "author": "Your Company",
+  "license": "MIT",
+  "dependencies": {
+    "@serialport/parser-readline": "^12.0.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
+    "fs-extra": "^11.2.0",
+    "node-fetch": "^3.3.2",
+    "serialport": "^12.0.0",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourcompany/micromanager-pos.git"
+  }
+}
