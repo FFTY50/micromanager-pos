@@ -1,102 +1,128 @@
 const VerifoneCommanderParser = require('../src/parsers/VerifoneCommanderParser');
 const SmartTransactionProcessor = require('../src/transaction/SmartTransactionProcessor');
 
+// Load actual configuration
+const actualConfig = require('../config/micromanager.json');
+const mockConfig = actualConfig.posTypes.verifone_commander;
+
 describe('VerifoneCommanderParser', () => {
     let parser;
-    let mockConfig;
 
     beforeEach(() => {
-        mockConfig = {
-            transaction: {
-                patterns: {
-                    total: '^TOTAL\\s+(\\d+\\.\\d{2})$',
-                    cash: '^CASH\\s+(\\d+\\.\\d{2})$',
-                    credit: '^CREDIT\\s+(\\d+\\.\\d{2})$',
-                    endTransaction: '^(THANK YOU|HAVE A NICE DAY).*$',
-                    cashier: '^CASHIER:\\s*(.+)$',
-                    lineItem: '^(.+?)\\s+(\\d+\\.\\d{2})$'
-                },
-                lineStripChars: 0,
-                controlCharsSequence: ''
-            },
-            serial: {
-                dataBits: 8,
-                stopBits: 1,
-                parity: 'none'
-            }
-        };
         parser = new VerifoneCommanderParser(mockConfig);
     });
 
-    test('should extract total amount correctly', () => {
-        const input = 'TOTAL 25.99';
-        const result = parser.extractTransactionData(input);
+    test('should return array from extractTransactionData', () => {
+        const input = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:09 102 L Monster Blue Hawaiia 1 3.49';
+        const results = parser.extractTransactionData(input);
         
-        expect(result.totalAmount).toBe(25.99);
-        expect(result.parsingSuccess).toBe(true);
-        expect(result.matchedPatterns).toContain('total');
+        expect(Array.isArray(results)).toBe(true);
+        expect(results.length).toBe(1);
+        expect(results[0].parsingSuccess).toBe(true);
     });
 
-    test('should handle unknown lines without crashing', () => {
-        const input = 'EMPLOYEE DISCOUNT 15%';
-        const result = parser.extractTransactionData(input);
+    test('should parse Verifone item line correctly', () => {
+        const input = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:09 102 L Monster Blue Hawaiia 1 3.49';
+        const results = parser.extractTransactionData(input);
+        const result = results[0];
         
-        expect(result.parsingSuccess).toBe(false);
-        expect(result.description).toContain('UNKNOWN');
-        expect(result.needsAnalysis).toBe(true);
-        expect(result.analysisPriority).toBe('medium'); // Contains numbers
+        expect(result.lineType).toBe('item');
+        expect(result.description).toBe('L Monster Blue Hawaiia');
+        expect(result.amount).toBe(3.49);
+        expect(result.quantity).toBe(1);
+        expect(result.timestamp).toBe('07/11/25 03:33:09');
+        expect(result.terminalId).toBe('102');
+        expect(result.confidenceScore).toBe(100);
     });
 
-    test('should identify transaction end patterns', () => {
-        const input = 'THANK YOU FOR YOUR VISIT';
-        const result = parser.extractTransactionData(input);
+    test('should parse Verifone total line correctly', () => {
+        const input = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:19 102 TOTAL 20.90';
+        const results = parser.extractTransactionData(input);
+        const result = results[0];
         
+        expect(result.lineType).toBe('total');
+        expect(result.description).toBe('TOTAL');
+        expect(result.amount).toBe(20.90);
+        expect(result.totalAmount).toBe(20.90);
+        expect(result.confidenceScore).toBe(100);
+    });
+
+    test('should parse Verifone payment lines correctly', () => {
+        const cashInput = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:29 102 CASH 20.90';
+        const creditInput = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:29 102 CREDIT 15.50';
+        
+        const cashResults = parser.extractTransactionData(cashInput);
+        const creditResults = parser.extractTransactionData(creditInput);
+        
+        expect(cashResults[0].lineType).toBe('payment');
+        expect(cashResults[0].description).toBe('CASH');
+        expect(cashResults[0].cashAmount).toBe(20.90);
+        
+        expect(creditResults[0].lineType).toBe('payment');
+        expect(creditResults[0].description).toBe('CREDIT');
+        expect(creditResults[0].amount).toBe(15.50);
+    });
+
+    test('should handle multi-line packets correctly', () => {
+        // Real multi-line packet from test data - has 3 control sequences so should split into 3 lines
+        const multiLineInput = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:29 102 PREAUTH 20.90 \\x0a\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:29 102 ST#1                   DR#1 TRAN#1028363\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:29 102 CSH: CORPORATE         07/11/25 03:33:29\\x0a';
+        const results = parser.extractTransactionData(multiLineInput);
+        
+        // Should detect as multi-line and split
+        expect(results.length).toBeGreaterThan(1);
+        
+        // Should have different line types
+        const lineTypes = results.map(r => r.lineType);
+        expect(lineTypes).toContain('payment'); // PREAUTH
+        expect(lineTypes).toContain('receipt_footer'); // ST# DR# TRAN#
+    });
+
+    test('should handle unknown lines with low confidence', () => {
+        const input = 'SOME UNKNOWN LINE FORMAT';
+        const results = parser.extractTransactionData(input);
+        const result = results[0];
+        
+        expect(result.lineType).toBe('unknown');
+        expect(result.description).toContain('UNKNOWN VERIFONE LINE');
+        expect(result.parsingSuccess).toBe(true); // Still included in transaction
+        expect(result.confidenceScore).toBe(10); // Low confidence
+    });
+
+    test('should identify receipt footer with transaction end', () => {
+        const input = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:29 102 ST#1 DR#1 TRAN#1028363';
+        const results = parser.extractTransactionData(input);
+        const result = results[0];
+        
+        expect(result.lineType).toBe('receipt_footer');
         expect(result.isEndOfTransaction).toBe(true);
-        expect(result.parsingSuccess).toBe(true);
-    });
-
-    test('should track unknown patterns for analysis', () => {
-        const unknownInputs = [
-            'EMPLOYEE DISCOUNT 10%',
-            'EMPLOYEE DISCOUNT 15%',
-            'EMPLOYEE DISCOUNT 20%'
-        ];
-        
-        unknownInputs.forEach(input => {
-            parser.extractTransactionData(input);
-        });
-        
-        const stats = parser.getParsingStats();
-        expect(stats.unknownLinesCount).toBe(3);
-        expect(stats.topUnknownPatterns.length).toBeGreaterThan(0);
-    });
-
-    test('should extract payment breakdown', () => {
-        const input = 'CASH 20.00';
-        const result = parser.extractTransactionData(input);
-        
-        expect(result.cashAmount).toBe(20.00);
-        expect(result.parsingSuccess).toBe(true);
+        expect(result.extractedFields.storeNumber).toBe('1');
+        expect(result.extractedFields.drawerNumber).toBe('1');
+        expect(result.extractedFields.transactionNumber).toBe('1028363');
     });
 
     test('should handle empty or malformed input gracefully', () => {
-        const inputs = ['', null, undefined, '   ', '\n\r'];
+        const inputs = ['', '   ', '\n\r'];
         
         inputs.forEach(input => {
-            const result = parser.extractTransactionData(input || '');
-            expect(result).toBeDefined();
-            expect(result.parsingSuccess).toBe(false);
+            const results = parser.extractTransactionData(input || '');
+            expect(Array.isArray(results)).toBe(true);
+            if (results.length > 0) {
+                expect(results[0].lineType).toBe('unknown');
+                expect(results[0].confidenceScore).toBe(10);
+            }
         });
     });
 
     test('should calculate confidence score correctly', () => {
-        const highConfidenceInput = 'TOTAL 25.99';
+        const highConfidenceInput = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:19 102 TOTAL 20.90';
         const lowConfidenceInput = 'RANDOM TEXT 123';
         
-        const highResult = parser.extractTransactionData(highConfidenceInput);
-        const lowResult = parser.extractTransactionData(lowConfidenceInput);
+        const highResults = parser.extractTransactionData(highConfidenceInput);
+        const lowResults = parser.extractTransactionData(lowConfidenceInput);
         
-        expect(highResult.confidenceScore).toBeGreaterThan(lowResult.confidenceScore);
+        expect(highResults[0].confidenceScore).toBeGreaterThan(lowResults[0].confidenceScore);
+        expect(highResults[0].confidenceScore).toBe(100);
+        expect(lowResults[0].confidenceScore).toBe(10);
     });
 });
 

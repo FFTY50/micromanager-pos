@@ -34,38 +34,9 @@
   "posTypes": {
     "verifone_commander": {
       "name": "Verifone Commander",
+      "description": "Verifone Commander POS system with multi-line packet support",
       "transaction": {
-        "maxDelayMs": 5000,
-        "patterns": {
-          "lineItem": "^(.+?)\\s+(\\d+\\.\\d{2})$",
-          "total": "^TOTAL\\s+(\\d+\\.\\d{2})$",
-          "subtotal": "^SUBTOTAL\\s+(\\d+\\.\\d{2})$",
-          "tax": "^TAX\\s+(\\d+\\.\\d{2})$",
-          "cash": "^CASH\\s+(\\d+\\.\\d{2})$",
-          "change": "^CHANGE\\s+(\\d+\\.\\d{2})$",
-          "credit": "^CREDIT\\s+(\\d+\\.\\d{2})$",
-          "debit": "^DEBIT\\s+(\\d+\\.\\d{2})$",
-          "transactionNumber": "^TXN#\\s*(\\d+)",
-          "cashier": "^CASHIER:\\s*(.+)$",
-          "terminal": "^TERMINAL:\\s*(\\d+)$",
-          "drawer": "^DRAWER:\\s*(\\d+)$",
-          "void": "^VOID",
-          "refund": "^REFUND",
-          "noSale": "^NO SALE",
-          "endTransaction": "^(THANK YOU|HAVE A NICE DAY|RECEIPT TOTAL).*$"
-        },
-        "lineTypes": {
-          "item": ["ITEM", "PRODUCT", "SKU"],
-          "payment": ["CASH", "CREDIT", "DEBIT", "CHECK", "CARD"],
-          "tax": ["TAX", "HST", "GST", "PST"],
-          "discount": ["DISCOUNT", "COUPON", "PROMO"],
-          "total": ["TOTAL", "SUBTOTAL"],
-          "void": ["VOID", "CANCEL"],
-          "refund": ["REFUND", "RETURN"]
-        },
-        "controlCharsSequence": "",
-        "lineStripChars": 0,
-        "encoding": "utf8"
+        "maxDelayMs": 5000
       },
       "serial": {
         "dataBits": 8,

@@ -5,7 +5,7 @@ A smart edge device application for capturing, parsing, and analyzing POS transa
 ## 🎯 Features
 
 - **Smart Edge Processing**: Complete transaction formation on the micromanager device
-- **Universal POS Support**: Modular parser system supporting Verifone Commander, SAM4S, NCR, and Gilbarco Passport
+- **Verifone POS Support**: Modular parser system with robust Verifone Commander support and extensible architecture for additional POS types
 - **Unknown Line Capture**: Never lose transaction data - unknown patterns are preserved for analysis
 - **Pattern Discovery**: Automatic detection and analysis of new POS patterns
 - **Real-time Streaming**: Live transaction lines to web app via Supabase real-time

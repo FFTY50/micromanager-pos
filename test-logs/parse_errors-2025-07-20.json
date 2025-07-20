@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp": "2025-07-20T00:56:33.490Z",
+    "data": {
+      "timestamp": "2025-07-20T00:56:33.490Z",
+      "rawLine": "COCA COLA                    2.50",
+      "error": "Cannot read properties of undefined (reading 'verifone_commander')",
+      "stack": "TypeError: Cannot read properties of undefined (reading 'verifone_commander')\n    at SmartTransactionProcessor.calculateExtractionConfidence (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:184:63)\n    at SmartTransactionProcessor.calculateExtractionConfidence [as formatTransactionLine] (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:152:41)\n    at SmartTransactionProcessor.formatTransactionLine [as processSerialLine] (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:46:42)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at Object.<anonymous> (/Users/trey/Code/micromanager-pos/tests/parser.test.js:173:9)"
+    }
+  },
+  {
+    "timestamp": "2025-07-20T00:56:33.492Z",
+    "data": {
+      "timestamp": "2025-07-20T00:56:33.492Z",
+      "rawLine": "EMPLOYEE DISCOUNT 15%",
+      "error": "Cannot read properties of undefined (reading 'verifone_commander')",
+      "stack": "TypeError: Cannot read properties of undefined (reading 'verifone_commander')\n    at SmartTransactionProcessor.calculateExtractionConfidence (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:184:63)\n    at SmartTransactionProcessor.calculateExtractionConfidence [as formatTransactionLine] (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:152:41)\n    at SmartTransactionProcessor.formatTransactionLine [as processSerialLine] (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:46:42)\n    at Object.<anonymous> (/Users/trey/Code/micromanager-pos/tests/parser.test.js:191:9)"
+    }
+  },
+  {
+    "timestamp": "2025-07-20T00:56:33.494Z",
+    "data": {
+      "timestamp": "2025-07-20T00:56:33.494Z",
+      "rawLine": "ISOLATED LINE",
+      "error": "Cannot read properties of undefined (reading 'verifone_commander')",
+      "stack": "TypeError: Cannot read properties of undefined (reading 'verifone_commander')\n    at SmartTransactionProcessor.calculateExtractionConfidence (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:184:63)\n    at SmartTransactionProcessor.calculateExtractionConfidence [as formatTransactionLine] (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:152:41)\n    at SmartTransactionProcessor.formatTransactionLine [as processSerialLine] (/Users/trey/Code/micromanager-pos/src/transaction/SmartTransactionProcessor.js:46:42)\n    at Object.<anonymous> (/Users/trey/Code/micromanager-pos/tests/parser.test.js:214:9)"
+    }
+  }
+]

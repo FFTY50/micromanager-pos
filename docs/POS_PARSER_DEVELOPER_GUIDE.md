@@ -8,13 +8,53 @@ This guide provides requirements, best practices, and implementation patterns fo
 ### 1. Parser Architecture
 - **Extend BasePOSParser**: All parsers must inherit from `BasePOSParser` for consistency and shared functionality
 - **Modular Design**: Each POS system gets its own parser class (e.g., `VerifoneCommanderParser`, `NCRParser`)
-- **Configuration-Driven**: Parser behavior should be configurable via `micromanager.json`
+- **Self-Contained Logic**: All parsing patterns, rules, and logic are defined within the parser class itself
+- **Configuration Independence**: Parsers do not rely on configuration files for parsing logic
 
-### 2. Output Requirements
+### 2. Multi-Line Packet Handling ⭐ **NEW ARCHITECTURE**
+**CRITICAL**: Parsers must handle multi-line packets from serial data streams.
+
+#### Multi-Line Detection
+Some POS systems send multiple logical lines in a single serial packet. Your parser must:
+- **Detect multi-line packets** using control sequences or delimiters
+- **Split packets into logical lines** before parsing
+- **Return arrays of parsed results** instead of single objects
+- **Track statistics per logical line** (not per packet)
+
+```javascript
+// Example: Multi-line packet detection
+isMultiLinePacket(rawPacket) {
+    const controlSeq = '\\x1bc0\\x01\\x1b!\\x00';
+    return (rawPacket.match(new RegExp(controlSeq, 'g')) || []).length > 1;
+}
+
+// Example: Packet splitting
+splitPacketIntoLines(rawPacket) {
+    const controlSeq = '\\x1bc0\\x01\\x1b!\\x00';
+    return rawPacket.split(controlSeq)
+        .filter(part => part.trim().length > 0)
+        .map(part => controlSeq + part.trim());
+}
+```
+
+#### New extractTransactionData Interface
+**BREAKING CHANGE**: `extractTransactionData()` now returns **arrays**:
+```javascript
+// OLD (deprecated):
+const result = parser.extractTransactionData(line);
+
+// NEW (required):
+const results = parser.extractTransactionData(packet); // Always returns array
+for (const result of results) {
+    // Process each logical line
+}
+```
+
+### 3. Output Requirements
 Parsers must output data at two levels:
 
 #### A. Individual Line Processing
-Each line must return a standardized result object:
+Each logical line must return a standardized result object:
 ```javascript
 {
   // Core fields (always present)
@@ -43,13 +83,15 @@ Each line must return a standardized result object:
 - Maintain transaction context across multiple lines
 - Support transaction validation and completeness checks
 
-### 3. Line Type Classification
-All lines must be classified into one of these types:
+### 4. Line Type Classification
+All logical lines must be classified into one of these types:
 
 - **`item`**: Individual products/services with quantities and amounts
 - **`total`**: Transaction subtotals, taxes, final totals
-- **`payment`**: Payment method lines (cash, credit, debit, etc.)
+- **`payment`**: Payment method lines (cash, credit, debit, preauth, etc.)
 - **`prepay`**: Prepaid items (gas, phone cards, etc.)
+- **`transaction_start`**: Transaction initiation markers (Trans#123)
+- **`receipt_footer`**: Receipt footer with store/drawer/transaction IDs
 - **`unknown`**: Unrecognized lines (still included in transaction)
 
 ### 4. Unknown Line Handling
@@ -65,8 +107,9 @@ All lines must be classified into one of these types:
 ### Phase 1: Setup and Structure
 - [ ] Create new parser class extending `BasePOSParser`
 - [ ] Add parser to factory method in `src/app.js`
-- [ ] Add configuration section to `micromanager.json`
+- [ ] Add POS type section to `micromanager.json` (operational settings only)
 - [ ] Create test file with real POS data samples
+- [ ] Define all parsing patterns within the parser class constructor
 
 ### Phase 2: Pattern Development
 - [ ] Collect real ASCII/serial data samples from target POS system
@@ -97,9 +140,43 @@ constructor(posConfig) {
 }
 ```
 
-#### `extractTransactionData(cleanedData)`
+#### `extractTransactionData(rawPacket)` ⭐ **NEW MULTI-LINE INTERFACE**
 ```javascript
-extractTransactionData(cleanedData) {
+extractTransactionData(rawPacket) {
+    // Handle multi-line packets by splitting and parsing each logical line
+    if (this.isMultiLinePacket(rawPacket)) {
+        const logicalLines = this.splitPacketIntoLines(rawPacket);
+        const results = [];
+        
+        for (const line of logicalLines) {
+            this.totalLinesProcessed++; // BasePOSParser stats tracking
+            const parsed = this.parseSingleLine(line);
+            
+            // Track stats per logical line
+            if (!parsed.parsingSuccess) {
+                this.trackUnknownPattern(line);
+                this.unknownLinesCount++;
+            }
+            
+            results.push(parsed);
+        }
+        return results; // ALWAYS returns array
+    } else {
+        // Single line - parse directly and return as array for consistency
+        this.totalLinesProcessed++;
+        const parsed = this.parseSingleLine(rawPacket);
+        
+        if (!parsed.parsingSuccess) {
+            this.trackUnknownPattern(rawPacket);
+            this.unknownLinesCount++;
+        }
+        
+        return [parsed]; // ALWAYS returns array
+    }
+}
+
+// Parse individual logical line (extracted from original extractTransactionData logic)
+parseSingleLine(cleanedData) {
     const result = {
         lineType: null,
         description: null,
@@ -107,7 +184,8 @@ extractTransactionData(cleanedData) {
         parsingSuccess: false,
         confidenceScore: 0,
         matchedPatterns: [],
-        extractedFields: {}
+        extractedFields: {},
+        // ... other required fields
     };
 
     // Try patterns in order of specificity
@@ -128,13 +206,82 @@ extractTransactionData(cleanedData) {
   - 10: Unknown lines (still valid for inclusion)
   - 0: Parsing errors (should be rare)
 
-### Phase 5: Testing and Validation
+### Phase 5: App.js Integration ⭐ **UPDATED FOR MULTI-LINE**
+The main application now handles arrays of parsed results:
+
+```javascript
+// In app.js handleSerialData() method:
+const parsedDataArray = this.posParser.extractTransactionData(cleanedData);
+
+// Process each parsed result from multi-line packets
+for (const parsedData of parsedDataArray) {
+    // Add line-level metadata
+    parsedData.description = parsedData.description || cleanedData.trim();
+    parsedData.timestamp = new Date().toISOString();
+    parsedData.rawLine = rawLine;
+
+    // Process through smart transaction processor
+    await this.transactionProcessor.processSerialLine(rawLine, parsedData);
+}
+```
+
+**Key Changes:**
+- App.js now loops through arrays of parsed results
+- Each logical line is processed individually by SmartTransactionProcessor
+- Multi-line packets result in multiple Supabase rows (more granular data)
+- Transaction boundaries and analytics work at the logical line level
+
+### Phase 6: Testing and Validation
 - [ ] Create comprehensive test suite with real data
+- [ ] Test multi-line packet detection and splitting
 - [ ] Test all line types and edge cases
 - [ ] Validate confidence scoring accuracy
 - [ ] Test unknown line handling
 - [ ] Verify transaction boundary detection
 - [ ] Performance test with large data sets
+- [ ] Test array return interface compatibility
+
+## Migration Guide: Old → New Architecture
+
+### Breaking Changes Summary
+1. **`extractTransactionData()` now returns arrays** instead of single objects
+2. **Multi-line packets are automatically split** into logical lines
+3. **Statistics tracking happens per logical line** instead of per packet
+4. **New line types added**: `transaction_start`, `receipt_footer`
+5. **App.js integration updated** to handle arrays of results
+
+### Migration Checklist for Existing Parsers
+- [ ] Update `extractTransactionData()` to return arrays
+- [ ] Implement `isMultiLinePacket()` and `splitPacketIntoLines()` methods
+- [ ] Move parsing logic to `parseSingleLine()` method
+- [ ] Add multi-line packet detection for your POS format
+- [ ] Update tests to expect arrays instead of single objects
+- [ ] Verify statistics tracking works with logical lines
+- [ ] Test with real multi-line data from your POS system
+
+### Example Migration: Simple Parser
+```javascript
+// OLD (deprecated):
+extractTransactionData(cleanedData) {
+    const result = { /* parsing logic */ };
+    return result; // Single object
+}
+
+// NEW (required):
+extractTransactionData(rawPacket) {
+    // Check for multi-line packets (implement for your POS format)
+    if (this.isMultiLinePacket(rawPacket)) {
+        const lines = this.splitPacketIntoLines(rawPacket);
+        return lines.map(line => this.parseSingleLine(line));
+    }
+    return [this.parseSingleLine(rawPacket)]; // Always return array
+}
+
+parseSingleLine(cleanedData) {
+    const result = { /* same parsing logic as before */ };
+    return result;
+}
+```
 
 ## Pattern Development Best Practices
 
