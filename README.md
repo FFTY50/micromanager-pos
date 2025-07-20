@@ -6,8 +6,7 @@ A smart edge device application for capturing, parsing, and analyzing POS transa
 
 - **Smart Edge Processing**: Complete transaction formation on the micromanager device
 - **Verifone POS Support**: Modular parser system with robust Verifone Commander support and extensible architecture for additional POS types
-- **Unknown Line Capture**: Never lose transaction data - unknown patterns are preserved for analysis
-- **Pattern Discovery**: Automatic detection and analysis of new POS patterns
+- **Unknown Line Preservation**: Never lose transaction data - unknown lines are preserved for visibility
 - **Real-time Streaming**: Live transaction lines to web app via Supabase real-time
 - **Video Integration**: Frigate NVR event creation for transaction video recording
 - **Backup & Recovery**: Local JSON backup files with 30-day retention
@@ -23,7 +22,6 @@ Serial Data → Parser → Smart Processor → Real-time Supabase + Frigate Even
 
 - **BasePOSParser**: Extensible parsing framework with unknown line handling
 - **SmartTransactionProcessor**: Edge processing with device-generated UUIDs
-- **Pattern Discovery System**: Automatic learning from unknown lines
 - **Frigate Integration**: Video event management for transactions
 - **Real-time Output**: Immediate Supabase publishing for web app consumption
 

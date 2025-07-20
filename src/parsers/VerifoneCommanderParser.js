@@ -77,22 +77,17 @@ class VerifoneCommanderParser extends BasePOSParser {
     // Parse individual logical line (extracted from original extractTransactionData logic)
     parseSingleLine(cleanedData) {
         const result = {
-            transactionNumber: null,
-            totalAmount: null,
-            cashAmount: null,
-            isEndOfTransaction: false,
-            rawData: cleanedData,
-            extractedFields: {},
-            matchedPatterns: [],
-            parsingSuccess: false,
-            confidenceScore: 0,
             lineType: null,
             description: null,
             amount: null,
             quantity: null,
             timestamp: null,
             terminalId: null,
-            itemType: null
+            transactionNumber: null,
+            totalAmount: null,
+            cashAmount: null,
+            isEndOfTransaction: false,
+            parsingSuccess: false
         };
 
         try {
@@ -108,185 +103,131 @@ class VerifoneCommanderParser extends BasePOSParser {
                 result.quantity = parseInt(itemMatch[5]);
                 result.amount = parseFloat(itemMatch[6]);
                 result.lineType = 'item';
-                result.extractedFields = {
-                    timestamp: result.timestamp,
-                    terminalId: result.terminalId,
-                    description: result.description,
-                    quantity: result.quantity,
-                    amount: result.amount
-                };
-                result.matchedPatterns.push('itemLine');
                 result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result; // Return early to avoid multiple pattern matches
+                matched = true;
             }
 
             // Check for TOTAL lines
-            const totalMatch = cleanedData.match(this.verifonePatterns.totalLine);
-            if (totalMatch) {
-                result.timestamp = `${totalMatch[1]} ${totalMatch[2]}`;
-                result.terminalId = totalMatch[3];
-                result.amount = parseFloat(totalMatch[4]);
-                result.totalAmount = result.amount;
-                result.lineType = 'total';
-                result.description = 'TOTAL';
-                result.extractedFields = {
-                    timestamp: result.timestamp,
-                    terminalId: result.terminalId,
-                    totalAmount: result.amount
-                };
-                result.matchedPatterns.push('totalLine');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const totalMatch = cleanedData.match(this.verifonePatterns.totalLine);
+                if (totalMatch) {
+                    result.timestamp = `${totalMatch[1]} ${totalMatch[2]}`;
+                    result.terminalId = totalMatch[3];
+                    result.amount = parseFloat(totalMatch[4]);
+                    result.totalAmount = result.amount;
+                    result.lineType = 'total';
+                    result.description = 'TOTAL';
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Check for CASH lines
-            const cashMatch = cleanedData.match(this.verifonePatterns.cashLine);
-            if (cashMatch) {
-                result.timestamp = `${cashMatch[1]} ${cashMatch[2]}`;
-                result.terminalId = cashMatch[3];
-                result.amount = parseFloat(cashMatch[4]);
-                result.cashAmount = result.amount;
-                result.lineType = 'payment';
-                result.description = 'CASH';
-                result.extractedFields = {
-                    timestamp: result.timestamp,
-                    terminalId: result.terminalId,
-                    cashAmount: result.amount
-                };
-                result.matchedPatterns.push('cashLine');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const cashMatch = cleanedData.match(this.verifonePatterns.cashLine);
+                if (cashMatch) {
+                    result.timestamp = `${cashMatch[1]} ${cashMatch[2]}`;
+                    result.terminalId = cashMatch[3];
+                    result.amount = parseFloat(cashMatch[4]);
+                    result.cashAmount = result.amount;
+                    result.lineType = 'payment';
+                    result.description = 'CASH';
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Check for CREDIT lines
-            const creditMatch = cleanedData.match(this.verifonePatterns.creditLine);
-            if (creditMatch) {
-                result.timestamp = `${creditMatch[1]} ${creditMatch[2]}`;
-                result.terminalId = creditMatch[3];
-                result.amount = parseFloat(creditMatch[4]);
-                result.lineType = 'payment';
-                result.description = 'CREDIT';
-                result.extractedFields = {
-                    timestamp: result.timestamp,
-                    terminalId: result.terminalId,
-                    creditAmount: result.amount
-                };
-                result.matchedPatterns.push('creditLine');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const creditMatch = cleanedData.match(this.verifonePatterns.creditLine);
+                if (creditMatch) {
+                    result.timestamp = `${creditMatch[1]} ${creditMatch[2]}`;
+                    result.terminalId = creditMatch[3];
+                    result.amount = parseFloat(creditMatch[4]);
+                    result.lineType = 'payment';
+                    result.description = 'CREDIT';
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Check for DEBIT lines
-            const debitMatch = cleanedData.match(this.verifonePatterns.debitLine);
-            if (debitMatch) {
-                result.timestamp = `${debitMatch[1]} ${debitMatch[2]}`;
-                result.terminalId = debitMatch[3];
-                result.amount = parseFloat(debitMatch[4]);
-                result.lineType = 'payment';
-                result.description = 'DEBIT';
-                result.extractedFields = {
-                    timestamp: result.timestamp,
-                    terminalId: result.terminalId,
-                    debitAmount: result.amount
-                };
-                result.matchedPatterns.push('debitLine');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const debitMatch = cleanedData.match(this.verifonePatterns.debitLine);
+                if (debitMatch) {
+                    result.timestamp = `${debitMatch[1]} ${debitMatch[2]}`;
+                    result.terminalId = debitMatch[3];
+                    result.amount = parseFloat(debitMatch[4]);
+                    result.lineType = 'payment';
+                    result.description = 'DEBIT';
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Check for PREAUTH lines
-            const preAuthMatch = cleanedData.match(this.verifonePatterns.preAuthLine);
-            if (preAuthMatch) {
-                result.timestamp = `${preAuthMatch[1]} ${preAuthMatch[2]}`;
-                result.terminalId = preAuthMatch[3];
-                result.amount = parseFloat(preAuthMatch[4]);
-                result.lineType = 'payment';
-                result.description = 'PREAUTH';
-                result.extractedFields = {
-                    timestamp: result.timestamp,
-                    terminalId: result.terminalId,
-                    preAuthAmount: result.amount
-                };
-                result.matchedPatterns.push('preAuthLine');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const preAuthMatch = cleanedData.match(this.verifonePatterns.preAuthLine);
+                if (preAuthMatch) {
+                    result.timestamp = `${preAuthMatch[1]} ${preAuthMatch[2]}`;
+                    result.terminalId = preAuthMatch[3];
+                    result.amount = parseFloat(preAuthMatch[4]);
+                    result.lineType = 'payment';
+                    result.description = 'PREAUTH';
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Check for PREPAY lines (different from PREAUTH)
-            const prepayMatch = cleanedData.match(this.verifonePatterns.prepayLine);
-            if (prepayMatch) {
-                result.timestamp = `${prepayMatch[1]} ${prepayMatch[2]}`;
-                result.terminalId = prepayMatch[3];
-                result.description = prepayMatch[4].trim();
-                result.quantity = parseInt(prepayMatch[5]);
-                result.amount = parseFloat(prepayMatch[6]);
-                result.lineType = 'prepay';
-                result.extractedFields = {
-                    timestamp: result.timestamp,
-                    terminalId: result.terminalId,
-                    description: result.description,
-                    quantity: result.quantity,
-                    amount: result.amount
-                };
-                result.matchedPatterns.push('prepayLine');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const prepayMatch = cleanedData.match(this.verifonePatterns.prepayLine);
+                if (prepayMatch) {
+                    result.timestamp = `${prepayMatch[1]} ${prepayMatch[2]}`;
+                    result.terminalId = prepayMatch[3];
+                    result.description = prepayMatch[4].trim();
+                    result.quantity = parseInt(prepayMatch[5]);
+                    result.amount = parseFloat(prepayMatch[6]);
+                    result.lineType = 'prepay';
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Check for transaction number
-            const transMatch = cleanedData.match(this.verifonePatterns.transactionLine);
-            if (transMatch) {
-                result.transactionNumber = transMatch[1];
-                result.lineType = 'transaction_start';
-                result.description = `Trans#${result.transactionNumber}`;
-                result.extractedFields.transactionNumber = result.transactionNumber;
-                result.matchedPatterns.push('transactionLine');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const transMatch = cleanedData.match(this.verifonePatterns.transactionLine);
+                if (transMatch) {
+                    result.transactionNumber = transMatch[1];
+                    result.lineType = 'transaction_start';
+                    result.description = `Trans#${result.transactionNumber}`;
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Check for receipt footer (end of transaction)
-            const footerMatch = cleanedData.match(this.verifonePatterns.receiptFooter);
-            if (footerMatch) {
-                result.isEndOfTransaction = true;
-                result.lineType = 'receipt_footer';
-                result.description = `ST#${footerMatch[1]} DR#${footerMatch[2]} TRAN#${footerMatch[3]}`;
-                result.extractedFields.storeNumber = footerMatch[1];
-                result.extractedFields.drawerNumber = footerMatch[2];
-                result.extractedFields.transactionNumber = footerMatch[3];
-                result.matchedPatterns.push('receiptFooter');
-                result.parsingSuccess = true;
-                result.confidenceScore = this.calculateConfidence(result);
-                return result;
+            if (!matched) {
+                const footerMatch = cleanedData.match(this.verifonePatterns.receiptFooter);
+                if (footerMatch) {
+                    result.isEndOfTransaction = true;
+                    result.lineType = 'receipt_footer';
+                    result.description = `ST#${footerMatch[1]} DR#${footerMatch[2]} TRAN#${footerMatch[3]}`;
+                    result.parsingSuccess = true;
+                    matched = true;
+                }
             }
 
             // Handle unknown lines - still include them in transaction with 'unknown' type
-            result.lineType = 'unknown';
-            result.description = `UNKNOWN VERIFONE LINE: ${cleanedData}`;
-            result.parsingSuccess = true; // Include in transaction
-            result.confidenceScore = 10; // Low confidence but still valid
-
-            logger.parser('Verifone transaction data extracted', {
-                matchedPatterns: result.matchedPatterns,
-                lineType: result.lineType,
-                amount: result.amount,
-                confidence: result.confidenceScore
-            });
+            if (!matched) {
+                result.lineType = 'unknown';
+                result.description = `UNKNOWN VERIFONE LINE: ${cleanedData}`;
+                result.parsingSuccess = true; // Include in transaction
+            }
 
         } catch (error) {
-            logger.error('Error extracting Verifone transaction data', {
-                cleanedData,
-                error: error.message
-            });
-            result.extractionError = error.message;
+            result.lineType = 'unknown';
+            result.description = `PARSE ERROR: ${error.message}`;
             result.parsingSuccess = false;
         }
 

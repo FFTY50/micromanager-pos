@@ -32,7 +32,7 @@ describe('VerifoneCommanderParser', () => {
         expect(result.quantity).toBe(1);
         expect(result.timestamp).toBe('07/11/25 03:33:09');
         expect(result.terminalId).toBe('102');
-        expect(result.confidenceScore).toBe(100);
+        expect(result.parsingSuccess).toBe(true);
     });
 
     test('should parse Verifone total line correctly', () => {
@@ -44,7 +44,7 @@ describe('VerifoneCommanderParser', () => {
         expect(result.description).toBe('TOTAL');
         expect(result.amount).toBe(20.90);
         expect(result.totalAmount).toBe(20.90);
-        expect(result.confidenceScore).toBe(100);
+        expect(result.parsingSuccess).toBe(true);
     });
 
     test('should parse Verifone payment lines correctly', () => {
@@ -85,7 +85,7 @@ describe('VerifoneCommanderParser', () => {
         expect(result.lineType).toBe('unknown');
         expect(result.description).toContain('UNKNOWN VERIFONE LINE');
         expect(result.parsingSuccess).toBe(true); // Still included in transaction
-        expect(result.confidenceScore).toBe(10); // Low confidence
+        expect(result.parsingSuccess).toBe(true); // Unknown lines still preserved
     });
 
     test('should identify receipt footer with transaction end', () => {
@@ -108,7 +108,7 @@ describe('VerifoneCommanderParser', () => {
             expect(Array.isArray(results)).toBe(true);
             if (results.length > 0) {
                 expect(results[0].lineType).toBe('unknown');
-                expect(results[0].confidenceScore).toBe(10);
+                expect(results[0].parsingSuccess).toBe(true);
             }
         });
     });
@@ -120,9 +120,8 @@ describe('VerifoneCommanderParser', () => {
         const highResults = parser.extractTransactionData(highConfidenceInput);
         const lowResults = parser.extractTransactionData(lowConfidenceInput);
         
-        expect(highResults[0].confidenceScore).toBeGreaterThan(lowResults[0].confidenceScore);
-        expect(highResults[0].confidenceScore).toBe(100);
-        expect(lowResults[0].confidenceScore).toBe(10);
+        expect(highResults[0].parsingSuccess).toBe(true);
+        expect(lowResults[0].parsingSuccess).toBe(true);
     });
 });
 

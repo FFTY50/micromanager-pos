@@ -1,33 +1,26 @@
 -- ========================================
--- CORE POS TRANSACTION TABLES
--- Updated schema for micromanager smart edge device
+-- CORE POS TRANSACTION TABLES - V1 SIMPLIFIED
+-- Micromanager-centric schema without pattern analysis
 -- ========================================
 
 -- Transactions table (main transaction records)
 create table public.transactions (
   id uuid not null default gen_random_uuid(),
-  cloud_system_id text not null,
+  micromanager_id text not null,
   start_time timestamp with time zone not null,
+  end_time timestamp with time zone null,
   duration_ms integer null,
   total_amount numeric(10, 2) null,
   cash_amount numeric(10, 2) null,
-  pos_txn_number text null,
-  store_number text null,
-  drawer_number text null,
-  other_meta jsonb null,
-  raw_description text null,
-  deleted_at timestamp with time zone null,
-  created_at timestamp with time zone not null default now(),
-  camera_id text null,
-  pos_source text null,
   credit_amount numeric(10, 2) null,
   debit_amount numeric(10, 2) null,
   preauth_amount numeric(10, 2) null,
+  pos_txn_number text null,
   is_void boolean null default false,
   is_no_sale boolean null default false,
-  micro_manager_id text null,
-  store_id uuid not null,
   frigate_event_id text null,
+  store_id uuid not null,
+  created_at timestamp with time zone not null default now(),
   constraint transactions_pkey primary key (id),
   constraint transactions_store_id_fkey foreign KEY (store_id) references stores (id) on delete CASCADE
 ) TABLESPACE pg_default;
@@ -36,65 +29,38 @@ create table public.transactions (
 create table public.transaction_lines (
   id bigint generated always as identity not null,
   transaction_id uuid null,
+  micromanager_id text null,
   line_type text null,
   description text null,
   qty numeric(10, 3) null,
   amount numeric(10, 2) null,
   taxable_flag boolean null,
-  created_at timestamp with time zone not null default now(),
-  camera_id text null,
-  cloud_system_id text null,
-  pos_terminal_id text null,
-  frigate_event_id text null,
-  
-  -- NEW: Enhanced fields for unknown line analysis
   raw_line text null,
   parsed_successfully boolean default false,
-  matched_patterns text[] default '{}',
-  extraction_confidence integer default 0,
-  pos_parser_version text null,
-  
-  -- Metadata for pattern analysis
-  line_length integer null,
-  contains_numbers boolean default false,
-  contains_currency boolean default false,
-  contains_time boolean default false,
-  contains_date boolean default false,
-  
-  -- Analysis fields
-  needs_analysis boolean default false,
-  analysis_priority text check (analysis_priority in ('low', 'medium', 'high', 'critical', 'analyzed')) default 'low',
-  error_details text null,
-  error_stack text null,
-  
+  frigate_event_id text null,
+  created_at timestamp with time zone not null default now(),
   constraint transaction_lines_pkey primary key (id),
   constraint transaction_lines_transaction_id_fkey foreign KEY (transaction_id) references transactions (id) on delete CASCADE
 ) TABLESPACE pg_default;
 
 -- Indexes for efficient querying
-create index IF not exists idx_transactions_store_system_time on public.transactions using btree (store_id, cloud_system_id, start_time desc) TABLESPACE pg_default
-where (deleted_at is null);
+create index IF not exists idx_transactions_micromanager_time on public.transactions using btree (micromanager_id, start_time desc) TABLESPACE pg_default;
+
+create index IF not exists idx_transactions_store_time on public.transactions using btree (store_id, start_time desc) TABLESPACE pg_default;
 
 create index IF not exists idx_transactions_pos_txn_number on public.transactions using btree (pos_txn_number) TABLESPACE pg_default;
 
 create index IF not exists idx_transactions_frigate_event on public.transactions using btree (frigate_event_id) TABLESPACE pg_default;
 
-create index IF not exists idx_transaction_lines_txn_id on public.transaction_lines using btree (transaction_id) TABLESPACE pg_default;
+create index IF not exists idx_transaction_lines_transaction_id on public.transaction_lines using btree (transaction_id) TABLESPACE pg_default;
 
-create index IF not exists idx_transaction_lines_cloud_system_created on public.transaction_lines using btree (cloud_system_id, created_at desc) TABLESPACE pg_default;
+create index IF not exists idx_transaction_lines_micromanager_time on public.transaction_lines using btree (micromanager_id, created_at desc) TABLESPACE pg_default;
 
-create index IF not exists idx_transaction_lines_cloud_orphaned on public.transaction_lines using btree (cloud_system_id, created_at desc) TABLESPACE pg_default
-where (transaction_id is null);
+create index IF not exists idx_transaction_lines_unknown on public.transaction_lines using btree (line_type, created_at desc) TABLESPACE pg_default
+where (line_type = 'unknown');
 
-create index IF not exists idx_transaction_lines_camera on public.transaction_lines using btree (camera_id) TABLESPACE pg_default;
-
-create index IF not exists idx_transaction_lines_frigate_event on public.transaction_lines using btree (frigate_event_id) TABLESPACE pg_default;
-
--- NEW: Indexes for unknown line analysis
-create index IF not exists idx_transaction_lines_unknown_analysis on public.transaction_lines using btree (line_type, analysis_priority, created_at desc) TABLESPACE pg_default
-where (line_type in ('unknown', 'parse_error') and needs_analysis = true);
-
-create index IF not exists idx_transaction_lines_parsing_success on public.transaction_lines using btree (cloud_system_id, parsed_successfully, created_at desc) TABLESPACE pg_default;
+create index IF not exists idx_transaction_lines_parse_errors on public.transaction_lines using btree (line_type, created_at desc) TABLESPACE pg_default
+where (line_type = 'parse_error');
 
 -- ========================================
 -- STORES TABLE (if not exists)

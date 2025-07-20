@@ -24,7 +24,7 @@ global.mockParsedData = {
   extractedFields: { test: 'value' },
   parsingSuccess: true,
   matchedPatterns: ['lineItem'],
-  confidenceScore: 85
+  parsingSuccess: true
 };
 
 // Global test timeouts

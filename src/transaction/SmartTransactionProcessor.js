@@ -126,42 +126,17 @@ class SmartTransactionProcessor {
 
     formatTransactionLine(parsedData, rawLine) {
         // Determine if this line matched any parsing patterns
-        const hasKnownPattern = parsedData.extractedFields && 
-                               Object.keys(parsedData.extractedFields).length > 0;
-        
-        const lineType = hasKnownPattern ? 
-                        this.determineLineType(parsedData) : 
-                        'unknown';
-
         return {
-            transaction_id: this.activeTransaction.id,
-            line_type: lineType,
-            description: parsedData.description || rawLine.trim(),
-            qty: parsedData.quantity || null,
-            amount: parsedData.amount || null,
-            taxable_flag: parsedData.taxable || false,
-            camera_id: this.cameraName,
-            pos_terminal_id: this.config.posTerminalId,
-            cloud_system_id: this.deviceId,
-            frigate_event_id: this.activeTransaction.frigateEventId,
-            
-            // Critical: Preserve ALL data for analysis
+            transaction_id: this.activeTransaction?.id || null,
+            micromanager_id: this.deviceId,
+            line_type: parsedData.lineType,
+            description: parsedData.description,
+            qty: parsedData.quantity,
+            amount: parsedData.amount,
+            taxable_flag: parsedData.taxable,
             raw_line: rawLine,
-            parsed_successfully: hasKnownPattern,
-            matched_patterns: hasKnownPattern ? Object.keys(parsedData.extractedFields) : [],
-            extraction_confidence: this.calculateExtractionConfidence(parsedData),
-            pos_parser_version: this.config.parserVersion || '1.0.0',
-            
-            // Metadata for unknown line analysis
-            line_length: rawLine.length,
-            contains_numbers: /\d/.test(rawLine),
-            contains_currency: /[\$£€¥]|\d+\.\d{2}/.test(rawLine),
-            contains_time: /\d{1,2}:\d{2}/.test(rawLine),
-            contains_date: /\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/.test(rawLine),
-            
-            // For future parser development
-            needs_analysis: !hasKnownPattern,
-            analysis_priority: this.calculateAnalysisPriority(rawLine, parsedData)
+            parsed_successfully: parsedData.parsingSuccess,
+            frigate_event_id: this.activeTransaction?.frigateEventId || null
         };
     }
 
@@ -178,36 +153,7 @@ class SmartTransactionProcessor {
         return 'other';
     }
 
-    calculateExtractionConfidence(parsedData) {
-        if (!parsedData.extractedFields) return 0;
-        
-        const totalPatterns = Object.keys(this.config.posTypes[this.config.posType].transaction.patterns).length;
-        const matchedPatterns = Object.keys(parsedData.extractedFields).length;
-        
-        return Math.round((matchedPatterns / totalPatterns) * 100);
-    }
 
-    calculateAnalysisPriority(rawLine, parsedData) {
-        let priority = 'low';
-        
-        // High priority: Contains money amounts but wasn't parsed
-        if (/\$?\d+\.\d{2}/.test(rawLine) && !parsedData.amount) {
-            priority = 'high';
-        }
-        
-        // Medium priority: Looks like a structured line but didn't match
-        if (/^\s*[A-Z]+[\s\d]*\s+[\d\$]+/.test(rawLine)) {
-            priority = 'medium';
-        }
-        
-        // High priority: Contains common POS keywords
-        const posKeywords = ['TOTAL', 'TAX', 'CASH', 'CREDIT', 'VOID', 'REFUND', 'TENDER'];
-        if (posKeywords.some(keyword => rawLine.toUpperCase().includes(keyword))) {
-            priority = 'high';
-        }
-        
-        return priority;
-    }
 
     async sendLineToSupabase(transactionLine) {
         try {
@@ -237,34 +183,26 @@ class SmartTransactionProcessor {
     async saveUnparsableLine(rawLine, error) {
         try {
             const unparsableLine = {
-                transaction_id: null, // No transaction context
+                transaction_id: null,
+                micromanager_id: this.deviceId,
                 line_type: 'parse_error',
                 description: `PARSE ERROR: ${error.message}`,
                 raw_line: rawLine,
                 parsed_successfully: false,
-                error_details: error.message,
-                error_stack: error.stack,
-                needs_analysis: true,
-                analysis_priority: 'critical',
-                camera_id: this.cameraName,
-                pos_terminal_id: this.config.posTerminalId,
-                cloud_system_id: this.deviceId,
                 frigate_event_id: 'parse-error'
             };
 
             await this.sendLineToSupabase(unparsableLine);
-            
-            // Also save to error log file
             await this.saveToLocalBackup('parse_errors', {
                 timestamp: new Date().toISOString(),
                 rawLine,
-                error: error.message,
-                stack: error.stack
+                error: error.message
             });
-            
         } catch (backupError) {
             logger.error('Failed to save unparsable line', { 
-                error: backupError.message 
+                rawLine, 
+                error: error.message, 
+                backupError: backupError.message 
             });
         }
     }
@@ -278,25 +216,20 @@ class SmartTransactionProcessor {
         // Create transaction record
         const transactionRecord = {
             id: this.activeTransaction.id,
-            cloud_system_id: this.deviceId,
+            micromanager_id: this.deviceId,
             start_time: this.activeTransaction.startTime.toISOString(),
+            end_time: endTime.toISOString(),
             duration_ms: duration,
             total_amount: this.calculateTotal(),
             cash_amount: this.calculateCashAmount(),
-            pos_txn_number: finalData.transactionNumber || null,
-            store_number: this.config.storeNumber || null,
-            drawer_number: finalData.drawerNumber || null,
-            other_meta: this.buildMetadata(finalData),
-            raw_description: this.logBuffer.map(l => l.rawLine).join('\n'),
-            camera_id: this.cameraName,
-            pos_source: this.config.posType,
             credit_amount: this.calculateCreditAmount(),
             debit_amount: this.calculateDebitAmount(),
-            is_void: finalData.isVoid || false,
-            is_no_sale: finalData.isNoSale || false,
-            micro_manager_id: this.deviceId,
-            store_id: this.config.storeId,
-            frigate_event_id: this.activeTransaction.frigateEventId
+            preauth_amount: this.calculatePreauthAmount(),
+            pos_txn_number: finalData.transactionNumber,
+            is_void: this.isVoidTransaction(),
+            is_no_sale: this.isNoSaleTransaction(),
+            frigate_event_id: this.activeTransaction.frigateEventId,
+            store_id: this.config.storeId
         };
 
         try {
@@ -412,6 +345,24 @@ class SmartTransactionProcessor {
         return this.logBuffer
             .filter(line => line.description?.toUpperCase().includes('DEBIT'))
             .reduce((sum, line) => sum + (line.amount || 0), 0);
+    }
+
+    calculatePreauthAmount() {
+        return this.logBuffer
+            .filter(line => line.description?.toUpperCase().includes('PREAUTH'))
+            .reduce((sum, line) => sum + (line.amount || 0), 0);
+    }
+
+    isVoidTransaction() {
+        return this.logBuffer.some(line => 
+            line.description?.toUpperCase().includes('VOID')
+        );
+    }
+
+    isNoSaleTransaction() {
+        return this.logBuffer.some(line => 
+            line.description?.toUpperCase().includes('NO SALE')
+        );
     }
 
     buildMetadata(finalData) {

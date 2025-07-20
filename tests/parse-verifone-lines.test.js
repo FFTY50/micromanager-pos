@@ -59,7 +59,7 @@ describe('Verifone Commander Parser', () => {
               amount: parsed.amount || null,
               lineType: parsed.lineType || null,
               matchedPatterns: parsed.matchedPatterns || [],
-              extractionConfidence: parsed.confidenceScore || 0
+              parsingSuccess: parsed.parsingSuccess || false
             }
           });
         }

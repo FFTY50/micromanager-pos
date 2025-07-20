@@ -6,30 +6,10 @@ class BasePOSParser {
         this.transactionConfig = posConfig.transaction;
         this.serialConfig = posConfig.serial || {};
         
-        // Build regex patterns from config
-        this.patterns = {};
-        this.patternStats = {}; // Track pattern usage for analysis
-        
-        if (this.transactionConfig.patterns) {
-            for (const [name, pattern] of Object.entries(this.transactionConfig.patterns)) {
-                try {
-                    this.patterns[name] = new RegExp(pattern);
-                    this.patternStats[name] = { matches: 0, lastMatch: null };
-                } catch (error) {
-                    logger.error('Invalid regex pattern', { name, pattern, error: error.message });
-                }
-            }
-        }
-        
         // Control characters handling
         if (this.transactionConfig.controlCharsSequence) {
             this.controlCharsRegex = new RegExp(this.transactionConfig.controlCharsSequence, 'g');
         }
-
-        // Track unknown line patterns for analysis
-        this.unknownPatterns = new Map();
-        this.totalLinesProcessed = 0;
-        this.unknownLinesCount = 0;
     }
 
     cleanData(rawData) {
