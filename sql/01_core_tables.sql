@@ -111,31 +111,7 @@ create policy "Allow all operations for authenticated users" on public.stores
 -- FUNCTIONS AND TRIGGERS
 -- ========================================
 
--- Function to automatically populate analysis metadata
-create or replace function populate_line_analysis_metadata()
-returns trigger as $$
-begin
-  -- Populate metadata fields
-  NEW.line_length := length(NEW.raw_line);
-  NEW.contains_numbers := NEW.raw_line ~ '\d';
-  NEW.contains_currency := NEW.raw_line ~ '[\$£€¥]|\d+\.\d{2}';
-  NEW.contains_time := NEW.raw_line ~ '\d{1,2}:\d{2}';
-  NEW.contains_date := NEW.raw_line ~ '\d{1,2}[-/]\d{1,2}[-/]\d{2,4}';
-  
-  -- Set analysis flag for unknown lines
-  IF NEW.line_type = 'unknown' OR NEW.line_type = 'parse_error' THEN
-    NEW.needs_analysis := true;
-  END IF;
-  
-  return NEW;
-end;
-$$ language plpgsql;
-
--- Trigger to populate metadata on insert
-create trigger trigger_populate_line_analysis_metadata
-  before insert on transaction_lines
-  for each row
-  execute function populate_line_analysis_metadata();
+-- No analysis functions or triggers needed for v1 simplified schema
 
 -- ========================================
 -- EXAMPLE DATA FOR TESTING
@@ -147,31 +123,31 @@ create trigger trigger_populate_line_analysis_metadata
 -- Example transaction
 insert into public.transactions (
   id, 
-  cloud_system_id, 
+  micromanager_id, 
   start_time, 
+  end_time,
   total_amount, 
   cash_amount, 
   store_id,
-  pos_source,
   frigate_event_id
 ) values (
   'a1b2c3d4-e5f6-7890-1234-567890abcdef',
   'micromanager-001',
-  now() - interval '1 hour',
-  25.99,
-  30.00,
+  '2025-01-15 14:30:00+00',
+  '2025-01-15 14:31:00+00',
+  5.25,
+  5.25,
   '123e4567-e89b-12d3-a456-426614174000',
-  'verifone_commander',
   'event-12345'
 );
 
 -- Example transaction lines
 insert into public.transaction_lines (
   transaction_id, 
+  micromanager_id,
   line_type, 
   description, 
   amount, 
-  cloud_system_id,
   raw_line,
   parsed_successfully
 ) values 

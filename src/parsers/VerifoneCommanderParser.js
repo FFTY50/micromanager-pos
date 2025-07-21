@@ -53,7 +53,7 @@ class VerifoneCommanderParser extends BasePOSParser {
                 
                 // Track stats per logical line
                 if (!parsed.parsingSuccess) {
-                    this.trackUnknownPattern(line);
+
                     this.unknownLinesCount++;
                 }
                 
@@ -66,7 +66,7 @@ class VerifoneCommanderParser extends BasePOSParser {
             const parsed = this.parseSingleLine(rawPacket);
             
             if (!parsed.parsingSuccess) {
-                this.trackUnknownPattern(rawPacket);
+
                 this.unknownLinesCount++;
             }
             
@@ -234,27 +234,6 @@ class VerifoneCommanderParser extends BasePOSParser {
         return result;
     }
 
-    calculateConfidence(result) {
-        let confidence = 0;
-        
-        // Base confidence for any match
-        if (result.matchedPatterns.length > 0) {
-            confidence += 50;
-        }
-        
-        // Bonus for extracting amount
-        if (result.amount !== null && !isNaN(result.amount)) {
-            confidence += 30;
-        }
-        
-        // Bonus for extracting description
-        if (result.description && result.description.length > 0) {
-            confidence += 20;
-        }
-        
-        return Math.min(100, confidence);
-    }
-
     // Get parser information
     getParserInfo() {
         return {
@@ -266,8 +245,7 @@ class VerifoneCommanderParser extends BasePOSParser {
                 'verifone_specific_parsing',
                 'item_line_extraction',
                 'payment_line_extraction',
-                'transaction_tracking',
-                'confidence_scoring'
+                'transaction_tracking'
             ]
         };
     }
