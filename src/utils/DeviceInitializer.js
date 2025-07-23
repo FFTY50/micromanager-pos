@@ -67,6 +67,7 @@ class DeviceInitializer {
       deviceName: process.env.DEVICE_NAME || 'POS Terminal',
       posType: process.env.POS_TYPE || 'verifone_commander',
       n8nWebhookUrl: process.env.N8N_WEBHOOK_URL || '',
+      frigateUrl: process.env.FRIGATE_URL || '',
       serialPort: process.env.SERIAL_PORT || '/dev/ttyUSB0',
       serialBaudRate: parseInt(process.env.SERIAL_BAUD_RATE) || 9600,
       localBackupEnabled: true,
@@ -216,6 +217,9 @@ class DeviceInitializer {
     }
     if (process.env.DEVICE_NAME) {
       config.deviceName = process.env.DEVICE_NAME;
+    }
+    if (process.env.FRIGATE_URL) {
+      config.frigateUrl = process.env.FRIGATE_URL;
     }
 
     return true;

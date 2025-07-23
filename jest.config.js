@@ -16,8 +16,7 @@ module.exports = {
   testTimeout: 10000,
   verbose: true,
   // Mock external dependencies
-  moduleNameMapping: {
-    '^@supabase/supabase-js$': '<rootDir>/tests/mocks/supabase.js',
+  moduleNameMapper: {
     '^serialport$': '<rootDir>/tests/mocks/serialport.js'
   }
 };

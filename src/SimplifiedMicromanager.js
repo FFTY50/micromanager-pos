@@ -15,6 +15,7 @@ class SimplifiedMicromanager {
     this.deviceName = config.deviceName; // Human name = camera name
     this.posType = config.posType;
     this.n8nWebhookUrl = config.n8nWebhookUrl;
+    this.frigateUrl = config.frigateUrl; // Frigate NVR URL for video correlation
     this.config = config;
     this.serialPort = null;
     this.parser = null;
@@ -126,28 +127,28 @@ class SimplifiedMicromanager {
   }
 
   /**
-   * Handle incoming serial data - core processing function
+   * Handle incoming serial data
    * @param {string} rawLine - Raw line from serial port
    */
   async handleSerialData(rawLine) {
     try {
-      this.stats.linesProcessed++;
-      
-      // Clean the raw line (minimal processing)
-      const cleanedLine = this.cleanRawLine(rawLine);
-      if (!cleanedLine) {
-        logger.debug('Skipped empty or invalid line', { deviceId: this.deviceId });
+      // Only skip truly empty lines - preserve ALL control characters
+      if (!rawLine || rawLine.length === 0) {
+        logger.debug('Skipped empty line', { deviceId: this.deviceId });
         return;
       }
+      
+      this.stats.linesProcessed++;
 
       // Create payload for n8n
       const payload = {
         micromanager_id: this.deviceId,
         device_name: this.deviceName,
         pos_type: this.posType,
-        raw_line: cleanedLine,
+        raw_line: rawLine,  // Pure, unmodified serial data
+        frigate_url: this.frigateUrl,  // Frigate NVR URL for video correlation
         timestamp: new Date().toISOString(),
-        line_length: cleanedLine.length
+        line_length: rawLine.length
       };
 
       // Always backup locally first (ensures no data loss)
@@ -158,7 +159,7 @@ class SimplifiedMicromanager {
 
       logger.debug('Processed serial data line', {
         deviceId: this.deviceId,
-        lineLength: cleanedLine.length,
+        lineLength: rawLine.length,
         isOnline: this.isOnline
       });
 
@@ -171,24 +172,7 @@ class SimplifiedMicromanager {
     }
   }
 
-  /**
-   * Clean raw line with minimal processing
-   * @param {string} rawLine - Raw line from serial
-   * @returns {string|null} Cleaned line or null if invalid
-   */
-  cleanRawLine(rawLine) {
-    if (typeof rawLine !== 'string') return null;
-    
-    // Minimal cleaning - remove obvious noise but preserve structure
-    const cleaned = rawLine
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars except \t, \n
-      .trim();
-    
-    // Skip empty lines
-    if (cleaned.length === 0) return null;
-    
-    return cleaned;
-  }
+
 
   /**
    * Send payload to n8n webhook with retry logic

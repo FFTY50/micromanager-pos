@@ -63,35 +63,75 @@ describe('SimplifiedMicromanager', () => {
     });
   });
 
-  describe('cleanRawLine', () => {
-    test('should clean control characters but preserve structure', () => {
-      const rawLine = '\x01\x02Hello World\x03\x04';
-      const cleaned = micromanager.cleanRawLine(rawLine);
-      expect(cleaned).toBe('Hello World');
+  describe('handleSerialData with raw data', () => {
+    let mockSendToN8n;
+    
+    beforeEach(() => {
+      // Mock the sendToN8nWithRetry method
+      mockSendToN8n = jest.spyOn(micromanager, 'sendToN8nWithRetry').mockResolvedValue();
+      jest.spyOn(micromanager, 'saveRawDataBackup').mockResolvedValue();
     });
 
-    test('should preserve tab and newline characters', () => {
-      const rawLine = 'Hello\tWorld\n';
-      const cleaned = micromanager.cleanRawLine(rawLine);
-      expect(cleaned).toBe('Hello\tWorld');
+    test('should preserve all control characters', async () => {
+      const verifoneData = '\x1bc0\x01\x1b!\x0007/23/25 10:15:01 102 L  Monster Blue Hawaiia   1        3.49 \x0a';
+      
+      await micromanager.handleSerialData(verifoneData);
+      
+      // Verify the payload contains unmodified data
+      expect(mockSendToN8n).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_line: verifoneData, // Exact match - no cleaning!
+          line_length: verifoneData.length,
+          micromanager_id: 'mmd-rv1-ddeeff',
+          device_name: 'Test POS',
+          pos_type: 'verifone_commander'
+        })
+      );
     });
 
-    test('should return null for empty strings', () => {
-      expect(micromanager.cleanRawLine('')).toBeNull();
-      expect(micromanager.cleanRawLine('   ')).toBeNull();
-      expect(micromanager.cleanRawLine('\x01\x02\x03')).toBeNull();
+    test('should handle multi-line packets without modification', async () => {
+      const multiLinePacket = '\x1bc0\x01\x1b!\x0007/23/25 10:15:15 102 CASH 25.00 \x0a\x1bc0\x01\x1b!\x0007/23/25 10:15:15 102 ST#1 DR#1 TRAN#1028401\x1bc0\x01\x1b!\x0007/23/25 10:15:15 102 CSH: CORPORATE 07/23/25 10:15:15\x0a';
+      
+      await micromanager.handleSerialData(multiLinePacket);
+      
+      expect(mockSendToN8n).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_line: multiLinePacket // Preserved exactly as received
+        })
+      );
     });
 
-    test('should return null for non-string input', () => {
-      expect(micromanager.cleanRawLine(null)).toBeNull();
-      expect(micromanager.cleanRawLine(undefined)).toBeNull();
-      expect(micromanager.cleanRawLine(123)).toBeNull();
+    test('should only skip truly empty lines', async () => {
+      await micromanager.handleSerialData('');
+      await micromanager.handleSerialData(null);
+      await micromanager.handleSerialData(undefined);
+      
+      expect(mockSendToN8n).not.toHaveBeenCalled();
+      
+      // But should process lines with only control characters
+      await micromanager.handleSerialData('\x00\x01\x1b');
+      expect(mockSendToN8n).toHaveBeenCalledTimes(1);
+      expect(mockSendToN8n).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_line: '\x00\x01\x1b'
+        })
+      );
     });
 
-    test('should handle typical POS data', () => {
-      const posLine = '\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:19 102 COCA COLA 1 2.50';
-      const cleaned = micromanager.cleanRawLine(posLine);
-      expect(cleaned).toBe('\\x1bc0\\x01\\x1b!\\x0007/11/25 03:33:19 102 COCA COLA 1 2.50');
+    test('should preserve essential Verifone control sequences', async () => {
+      const verifoneControlSequence = '\x1bc0\x01\x1b!\x00';
+      
+      await micromanager.handleSerialData(verifoneControlSequence);
+      
+      expect(mockSendToN8n).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_line: verifoneControlSequence
+        })
+      );
+      
+      // Verify control sequence is intact
+      const sentPayload = mockSendToN8n.mock.calls[0][0];
+      expect(sentPayload.raw_line).toContain('\x1bc0\x01\x1b!\x00');
     });
   });
 
@@ -342,13 +382,21 @@ describe('SimplifiedMicromanager', () => {
       );
     });
 
-    test('should skip empty lines', async () => {
+    test('should only skip truly empty lines', async () => {
+      // These should be skipped (truly empty)
       await micromanager.handleSerialData('');
+      await micromanager.handleSerialData(null);
+      await micromanager.handleSerialData(undefined);
+
+      expect(fetch).not.toHaveBeenCalled();
+      expect(micromanager.stats.linesProcessed).toBe(0); // None should increment counter
+
+      // These should be processed (contain data, even if just whitespace/control chars)
       await micromanager.handleSerialData('   ');
       await micromanager.handleSerialData('\x01\x02');
 
-      expect(micromanager.stats.linesProcessed).toBe(3);
-      expect(fetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(2); // Both should be sent
+      expect(micromanager.stats.linesProcessed).toBe(2); // 0 + 2 processed
     });
 
     test('should handle processing errors gracefully', async () => {
