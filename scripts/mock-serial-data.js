@@ -8,6 +8,7 @@
 
 const EventEmitter = require('events');
 const fs = require('fs');
+const { getRandomVerifoneTransaction, generateVerifoneTransactionWithTimestamp } = require('../tests/mocks/verifone-mock-data');
 
 class MockSerialDataGenerator extends EventEmitter {
     constructor(posType = 'verifone_commander', intervalMs = 2000) {
@@ -22,60 +23,10 @@ class MockSerialDataGenerator extends EventEmitter {
     }
 
     loadTransactionTemplates() {
+        // Only Verifone Commander is supported with authentic field data
+        // Sam4s support removed until real data is available
         return {
-            verifone_commander: [
-                // Standard sale transaction
-                [
-                    'COCA COLA                    2.50',
-                    'CHIPS REGULAR                1.99',
-                    'SUBTOTAL                     4.49',
-                    'TAX                          0.36',
-                    'TOTAL                        4.85',
-                    'CASH                         5.00',
-                    'CHANGE                       0.15',
-                    'THANK YOU FOR YOUR VISIT'
-                ],
-                // Transaction with unknown lines (for testing)
-                [
-                    'ENERGY DRINK                 3.99',
-                    'EMPLOYEE DISCOUNT 10%',  // Unknown line
-                    'SUBTOTAL                     3.59',
-                    'STORE CREDIT APPLIED',    // Unknown line
-                    'TAX                          0.29',
-                    'TOTAL                        3.88',
-                    'CREDIT                       3.88',
-                    'RECEIPT TOTAL'
-                ],
-                // Void transaction
-                [
-                    'CANDY BAR                    1.50',
-                    'VOID                         1.50',
-                    'NO SALE',
-                    'HAVE A NICE DAY'
-                ]
-            ],
-            sams4s: [
-                [
-                    '01-15-2025 14:30 POS-MAIN JOHN',
-                    'PLU 12345 COFFEE             2.25',
-                    'DEPT 02 DONUT               1.50',
-                    'SUBTOTAL                     3.75',
-                    'TAX                          0.30',
-                    'TOTAL                        4.05',
-                    'CASH                         5.00',
-                    'CHANGE                       0.95',
-                    '01-15-2025 14:31 POS-MAIN COMPLETE'
-                ],
-                [
-                    '01-15-2025 15:45 POS-MAIN SARAH',
-                    'PLU 98765 SANDWICH           6.99',
-                    'LOYALTY DISCOUNT 5%',     // Unknown line
-                    'TAX                          0.56',
-                    'TOTAL                        7.55',
-                    'CARD                         7.55',
-                    '01-15-2025 15:46 POS-MAIN COMPLETE'
-                ]
-            ]
+            verifone_commander: 'AUTHENTIC_DATA' // Marker to use real data from verifone-mock-data.js
         };
     }
 
@@ -98,17 +49,18 @@ class MockSerialDataGenerator extends EventEmitter {
     generateTransaction() {
         if (!this.isRunning) return;
 
-        const templates = this.templates[this.posType];
-        if (!templates) {
-            console.error(`❌ No templates found for POS type: ${this.posType}`);
+        // Only Verifone Commander is supported with authentic data
+        if (this.posType !== 'verifone_commander') {
+            console.error(`❌ POS type '${this.posType}' not supported. Only 'verifone_commander' is available with authentic field data.`);
+            console.error(`   Sam4s support removed until real data is collected.`);
             return;
         }
 
-        // Pick a random transaction template
-        const template = templates[Math.floor(Math.random() * templates.length)];
+        // Get authentic Verifone transaction with current timestamp
+        const template = generateVerifoneTransactionWithTimestamp(null, new Date());
         
-        console.log(`\n🧾 Transaction #${this.transactionCounter++} (${this.posType}):`);
-        console.log('─'.repeat(50));
+        console.log(`\n🧾 Transaction #${this.transactionCounter++} (${this.posType} - AUTHENTIC DATA):`);
+        console.log('─'.repeat(60));
 
         // Send each line with a small delay to simulate real POS timing
         this.sendTransactionLines(template, 0);
@@ -124,13 +76,16 @@ class MockSerialDataGenerator extends EventEmitter {
         }
 
         const line = lines[index];
-        console.log(`📝 ${line}`);
         
-        // Emit the line (your app would listen to this)
+        // Display cleaned version for readability, but emit raw data
+        const displayLine = line.replace(/\x1b/g, '\\x1b').replace(/\x01/g, '\\x01').replace(/\x0a/g, '\\x0a');
+        console.log(`📝 ${displayLine}`);
+        
+        // Emit the raw line exactly as it would come from serial port
         this.emit('data', line);
 
-        // Send next line after a short delay (100-500ms)
-        const lineDelay = 100 + Math.random() * 400;
+        // Realistic timing based on actual Verifone output (50-200ms between lines)
+        const lineDelay = 50 + Math.random() * 150;
         setTimeout(() => this.sendTransactionLines(lines, index + 1), lineDelay);
     }
 

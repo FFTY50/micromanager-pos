@@ -66,7 +66,7 @@ curl -X POST http://localhost:5000/api/events/pos_camera/transaction/create \
 - [ ] **Supabase credentials** configured
 - [ ] **Device ID** set (unique identifier)
 - [ ] **Serial port** path configured
-- [ ] **POS type** selected (verifone_commander, sams4s, etc.)
+- [ ] **POS type** selected (only verifone_commander supported with authentic field data)
 - [ ] **Frigate URL** and camera name set
 - [ ] **Store information** configured
 
