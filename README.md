@@ -1,78 +1,84 @@
-# Micromanager POS Transaction Processor
+# 🚀 Simplified Micromanager
 
-A smart edge device application for capturing, parsing, and analyzing POS transaction data with real-time Supabase integration and Frigate NVR video recording.
+> **Raw POS Data Forwarder - Serial to n8n Webhook**
 
-## 🎯 Features
+A lightweight, reliable POS data forwarder that captures raw serial data from Point-of-Sale systems and forwards it directly to n8n webhooks for cloud-based processing. No local parsing, maximum reliability.
 
-- **Smart Edge Processing**: Complete transaction formation on the micromanager device
-- **Verifone POS Support**: Modular parser system with robust Verifone Commander support and extensible architecture for additional POS types
-- **Unknown Line Preservation**: Never lose transaction data - unknown lines are preserved for visibility
-- **Real-time Streaming**: Live transaction lines to web app via Supabase real-time
-- **Video Integration**: Frigate NVR event creation for transaction video recording
-- **Backup & Recovery**: Local JSON backup files with 30-day retention
-- **Zero Data Loss**: Every line preserved, even unparsable data
+## 🎯 Overview
+
+Simplified Micromanager transforms the traditional complex POS processing approach into a streamlined data forwarding solution. It captures raw transaction data from serial interfaces and sends it directly to your n8n workflows, where all parsing and processing logic resides.
+
+### Key Features
+
+- **📡 Raw Data Forwarding**: Sends unprocessed POS data directly to n8n webhooks
+- **🆔 Smart Device ID**: Auto-generates unique device IDs in format `mmd-rv1-{last6MAC}`
+- **🛡️ Zero Data Loss**: Robust local backup with 30-day retention during network outages
+- **🔄 Auto-Recovery**: Exponential backoff retry logic with offline queuing
+- **☁️ Cloud-First Processing**: All parsing and business logic handled in n8n workflows
+- **📊 Comprehensive Monitoring**: Health checks, statistics, and status reporting
+- **🔧 Minimal Configuration**: Environment-based setup with intelligent defaults
 
 ## 🏗️ Architecture
 
+### Current (Simplified):
 ```
-Serial Data → Parser → Smart Processor → Real-time Supabase + Frigate Events + JSON Backup
+POS → Serial → Micromanager → [Raw Data + Local Backup] → n8n Webhook → [Cloud Processing]
+```
+
+### Previous (Complex):
+```
+POS → Serial → Micromanager → [VerifoneParser + SmartTransactionProcessor + Frigate API] → Supabase
 ```
 
 ### Key Components
 
-- **BasePOSParser**: Extensible parsing framework with unknown line handling
-- **SmartTransactionProcessor**: Edge processing with device-generated UUIDs
-- **Frigate Integration**: Video event management for transactions
-- **Real-time Output**: Immediate Supabase publishing for web app consumption
+- **DeviceInitializer**: Auto-generates unique device IDs and manages configuration
+- **SimplifiedMicromanager**: Core data forwarding engine with retry logic
+- **Local Backup System**: Daily JSON files with automatic 30-day cleanup
+- **Health Monitoring**: Built-in status reporting and statistics tracking
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 18+ 
-- Supabase project
-- Frigate NVR instance (optional but recommended)
+- n8n instance with webhook endpoint
 - Serial port connection to POS system
+- Network connectivity for webhook calls
 
 ### Installation
 
 ```bash
-# Clone or download the project
-cd micromanager-pos
+# Clone the project
+git clone <repository-url>
+cd micromanager-cloud
 
-# Run automated setup
-npm run setup
+# Install dependencies
+npm install
 
-# Edit configuration
+# Configure environment
 cp .env.example .env
-# Edit .env with your Supabase, Frigate, and device settings
-
-# Setup database tables
-# Run the SQL files in sql/ directory on your Supabase project:
-# - 01_core_tables.sql
-# - 02_pattern_discovery.sql
+# Edit .env with your n8n webhook URL and device settings
 ```
 
 ### Configuration
 
-Edit `.env` file:
+Edit `.env` file with your settings:
 
 ```bash
-# Database
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-supabase-anon-key
+# Required: n8n webhook URL
+N8N_WEBHOOK_URL=https://n8n.yourserver.com/webhook/parse-pos-line
 
-# Device
-DEVICE_ID=micromanager-001
-SERIAL_PORT=/dev/ttyUSB0
-STORE_ID=store-123
-
-# Frigate
-FRIGATE_URL=http://localhost:5000
-CAMERA_NAME=pos_camera
-
-# POS Type
+# Device configuration
+DEVICE_NAME=POS Terminal 101
 POS_TYPE=verifone_commander
+SERIAL_PORT=/dev/ttyUSB0
+SERIAL_BAUD_RATE=9600
+
+# Optional: Retry configuration
+RETRY_ATTEMPTS=3
+RETRY_DELAY_MS=1000
+
 ```
 
 ### Running
@@ -84,62 +90,80 @@ npm run dev
 # Production mode
 npm start
 
-# Health check
-curl http://localhost:3001/health
+# Optional: Enable health check server
+ENABLE_HEALTH_SERVER=true npm start
+
+# Check health (if enabled)
+curl http://localhost:3000/health
 ```
 
-## 📊 Real-time Receipt Display
+## 📡 Device Configuration
 
-Every transaction line appears instantly in your web app:
+The micromanager automatically generates a unique device ID on first run:
 
-```javascript
-// Supabase real-time subscription
-const subscription = supabase
-  .channel('transaction_lines')
-  .on('postgres_changes', 
-    { event: 'INSERT', schema: 'public', table: 'transaction_lines' },
-    (payload) => {
-      // Live line appears with transaction_id
-      updateReceiptDisplay(payload.new);
-    }
-  )
-  .subscribe();
+```bash
+# Device ID format: mmd-rv1-{last6MAC}
+# Example: mmd-rv1-ddeeff (from MAC aa:bb:cc:dd:ee:ff)
 ```
 
-## 🧠 Unknown Line Analysis
-
-The system captures and analyzes unknown patterns:
-
-```sql
--- Find high-priority unknown patterns
-SELECT raw_line, COUNT(*) as frequency 
-FROM transaction_lines 
-WHERE line_type = 'unknown' AND analysis_priority = 'high'
-GROUP BY raw_line 
-ORDER BY frequency DESC;
-
--- Auto-discover new patterns
-SELECT * FROM auto_discover_patterns(5, 7); -- 5+ occurrences in 7 days
-```
-
-## 🔧 Parser Configuration
-
-Add new POS patterns in `config/micromanager.json`:
+Configuration is stored in `config/device.json`:
 
 ```json
 {
-  "posTypes": {
-    "your_pos_brand": {
-      "transaction": {
-        "patterns": {
-          "total": "^TOTAL\\s+(\\d+\\.\\d{2})$",
-          "employee_discount": "^EMPLOYEE DISCOUNT (\\d+)%$",
-          "endTransaction": "^(THANK YOU|RECEIPT).*$"
-        }
-      }
-    }
-  }
+  "deviceId": "mmd-rv1-ddeeff",
+  "deviceName": "POS Terminal 101",
+  "posType": "verifone_commander",
+  "n8nWebhookUrl": "https://n8n.yourserver.com/webhook/parse-pos-line",
+  "serialPort": "/dev/ttyUSB0",
+  "serialBaudRate": 9600,
+  "localBackupEnabled": true,
+  "retryAttempts": 3,
+  "retryDelayMs": 1000
 }
+```
+
+## 📊 Data Flow
+
+### Webhook Payload
+
+Each POS line is sent to your n8n webhook as:
+
+```json
+{
+  "micromanager_id": "mmd-rv1-ddeeff",
+  "device_name": "POS Terminal 101",
+  "pos_type": "verifone_commander",
+  "raw_line": "07/11/25 03:33:19 102 COCA COLA 1 2.50",
+  "timestamp": "2025-01-15T10:30:45.123Z",
+  "line_length": 42
+}
+```
+
+### HTTP Headers
+
+```
+Content-Type: application/json
+X-Device-ID: mmd-rv1-ddeeff
+X-Device-Name: POS Terminal 101
+X-POS-Type: verifone_commander
+User-Agent: SimplifiedMicromanager/mmd-rv1-ddeeff
+```
+
+## 🛡️ Reliability Features
+
+### Local Backup
+
+- **Daily Files**: `transaction-logs/raw_data-YYYY-MM-DD.json`
+- **Failed Webhooks**: `transaction-logs/failed_webhooks-YYYY-MM-DD.json`
+- **30-Day Retention**: Automatic cleanup of old backup files
+- **Zero Data Loss**: All POS data preserved locally regardless of network status
+
+### Network Resilience
+
+- **Exponential Backoff**: 1s, 2s, 4s retry delays
+- **Offline Queuing**: Failed webhook calls queued for retry
+- **Auto-Recovery**: Automatic reconnection when network restored
+- **Batch Processing**: Queued items sent in sequence after reconnection
 ```
 
 ## 📈 Pattern Discovery Workflow

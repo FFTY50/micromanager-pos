@@ -1,7 +1,7 @@
 {
-  "name": "micromanager-pos",
+  "name": "micromanager-cloud",
   "version": "1.0.0",
-  "description": "Smart Edge POS Transaction Processor with Frigate Integration",
+  "description": "Simplified POS Data Forwarder - Raw serial data to n8n webhook",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
@@ -18,20 +18,19 @@
   "keywords": [
     "pos",
     "transaction",
-    "parser",
-    "frigate",
-    "supabase",
+    "n8n",
+    "cloud",
     "micromanager",
-    "retail"
+    "retail",
+    "minimal-client"
   ],
   "author": "Your Company",
   "license": "MIT",
   "dependencies": {
     "@serialport/parser-readline": "^12.0.0",
-    "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^16.3.1",
     "fs-extra": "^11.2.0",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.7.0",
     "serialport": "^12.0.0",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1"
@@ -47,6 +46,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourcompany/micromanager-pos.git"
+    "url": "https://github.com/yourcompany/micromanager-cloud.git"
   }
 }

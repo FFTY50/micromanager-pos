@@ -1,0 +1,62 @@
+[
+  {
+    "timestamp": "2025-07-23T13:35:34.645Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "SUCCESS 1",
+      "timestamp": "2025-07-23T13:35:34.645Z",
+      "line_length": 9,
+      "backup_reason": "routine_backup",
+      "device_status": "online"
+    }
+  },
+  {
+    "timestamp": "2025-07-23T13:35:34.647Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "SUCCESS 2",
+      "timestamp": "2025-07-23T13:35:34.647Z",
+      "line_length": 9,
+      "backup_reason": "routine_backup",
+      "device_status": "online"
+    }
+  },
+  {
+    "timestamp": "2025-07-23T13:35:34.652Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "FAIL 1",
+      "timestamp": "2025-07-23T13:35:34.649Z",
+      "line_length": 6,
+      "backup_reason": "routine_backup",
+      "device_status": "online"
+    }
+  },
+  {
+    "timestamp": "2025-07-23T13:35:34.756Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "FAIL 2",
+      "timestamp": "2025-07-23T13:35:34.756Z",
+      "line_length": 6,
+      "backup_reason": "routine_backup",
+      "device_status": "offline"
+    }
+  }
+]

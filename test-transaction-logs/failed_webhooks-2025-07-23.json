@@ -1,0 +1,62 @@
+[
+  {
+    "timestamp": "2025-07-23T13:35:34.755Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "FAIL 1",
+      "timestamp": "2025-07-23T13:35:34.649Z",
+      "line_length": 6,
+      "failure_reason": "request to http://localhost:3001/webhook failed, reason: ",
+      "attempts_made": 2
+    }
+  },
+  {
+    "timestamp": "2025-07-23T13:35:34.859Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "FAIL 2",
+      "timestamp": "2025-07-23T13:35:34.756Z",
+      "line_length": 6,
+      "failure_reason": "request to http://localhost:3001/webhook failed, reason: ",
+      "attempts_made": 2
+    }
+  },
+  {
+    "timestamp": "2025-07-23T13:35:35.972Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "FAIL 1",
+      "timestamp": "2025-07-23T13:35:34.649Z",
+      "line_length": 6,
+      "failure_reason": "request to http://localhost:3001/webhook failed, reason: ",
+      "attempts_made": 2
+    }
+  },
+  {
+    "timestamp": "2025-07-23T13:35:36.179Z",
+    "deviceId": "mmd-rv1-test01",
+    "deviceName": "Integration Test POS",
+    "data": {
+      "micromanager_id": "mmd-rv1-test01",
+      "device_name": "Integration Test POS",
+      "pos_type": "verifone_commander",
+      "raw_line": "FAIL 2",
+      "timestamp": "2025-07-23T13:35:34.756Z",
+      "line_length": 6,
+      "failure_reason": "request to http://localhost:3001/webhook failed, reason: ",
+      "attempts_made": 2
+    }
+  }
+]
