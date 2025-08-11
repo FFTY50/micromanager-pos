@@ -8,7 +8,7 @@ const logger = require('./Logger');
  * Generates special format device IDs: mmd-rv1-{last6MAC}
  */
 class DeviceInitializer {
-  static configPath = path.join(__dirname, '..', '..', 'config', 'device.json');
+  static configPath = path.join(process.cwd(), 'config', 'device.json');
 
   /**
    * Get or create device configuration
@@ -220,6 +220,12 @@ class DeviceInitializer {
     }
     if (process.env.FRIGATE_URL) {
       config.frigateUrl = process.env.FRIGATE_URL;
+    }
+    if (process.env.SERIAL_PORT) {
+      config.serialPort = process.env.SERIAL_PORT;
+    }
+    if (process.env.SERIAL_BAUD_RATE) {
+      config.serialBaudRate = parseInt(process.env.SERIAL_BAUD_RATE);
     }
 
     return true;
