@@ -207,7 +207,11 @@ class SimplifiedMicromanager {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        let bodyText = '';
+        try { bodyText = await response.text(); } catch (_) {}
+        const err = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        err.responseBody = bodyText;
+        throw err;
       }
 
       this.stats.webhooksSent++;
@@ -234,6 +238,7 @@ class SimplifiedMicromanager {
       logger.warn(`n8n webhook send attempt ${attempt} failed`, {
         deviceId: this.deviceId,
         error: error.message,
+        responseBody: error.responseBody,
         attempt,
         maxAttempts: this.retryAttempts
       });
