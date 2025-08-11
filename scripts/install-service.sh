@@ -17,6 +17,8 @@ SERVICE_NAME="micromanager-cloud"
 SERVICE_USER="micromanager"
 INSTALL_DIR="/opt/micromanager-cloud"
 LOG_DIR="/var/log/micromanager"
+# The application writes backups to "$INSTALL_DIR/transaction-logs"
+TRANSACTION_DIR="$INSTALL_DIR/transaction-logs"
 
 echo -e "${BLUE}=== Micromanager Cloud Service Installer ===${NC}"
 echo
@@ -45,7 +47,10 @@ fi
 echo -e "${YELLOW}Step 2: Creating directories...${NC}"
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$LOG_DIR"
+mkdir -p "$TRANSACTION_DIR"
 chown "$SERVICE_USER:$SERVICE_USER" "$LOG_DIR"
+chown -R "$SERVICE_USER:$SERVICE_USER" "$TRANSACTION_DIR"
+chmod 755 "$TRANSACTION_DIR"
 echo -e "${GREEN}✓ Created directories${NC}"
 
 echo -e "${YELLOW}Step 3: Copying application files...${NC}"
