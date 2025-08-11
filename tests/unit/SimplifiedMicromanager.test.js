@@ -16,7 +16,7 @@ describe('SimplifiedMicromanager', () => {
     jest.clearAllMocks();
     
     mockConfig = {
-      deviceId: 'mmd-rv1-ddeeff',
+      deviceId: 'mmd-rv1-ddeeff-0',
       deviceName: 'Test POS',
       posType: 'verifone_commander',
       n8nWebhookUrl: 'https://test.n8n.com/webhook',
@@ -38,7 +38,7 @@ describe('SimplifiedMicromanager', () => {
 
   describe('constructor', () => {
     test('should initialize with correct configuration', () => {
-      expect(micromanager.deviceId).toBe('mmd-rv1-ddeeff');
+      expect(micromanager.deviceId).toBe('mmd-rv1-ddeeff-0');
       expect(micromanager.deviceName).toBe('Test POS');
       expect(micromanager.posType).toBe('verifone_commander');
       expect(micromanager.n8nWebhookUrl).toBe('https://test.n8n.com/webhook');
@@ -50,7 +50,7 @@ describe('SimplifiedMicromanager', () => {
 
     test('should use default values for optional config', () => {
       const minimalConfig = {
-        deviceId: 'mmd-rv1-test',
+        deviceId: 'mmd-rv1-test-0',
         deviceName: 'Minimal POS',
         posType: 'verifone_commander',
         serialPort: '/dev/ttyUSB0',
@@ -82,7 +82,7 @@ describe('SimplifiedMicromanager', () => {
         expect.objectContaining({
           raw_line: verifoneData, // Exact match - no cleaning!
           line_length: verifoneData.length,
-          micromanager_id: 'mmd-rv1-ddeeff',
+          micromanager_id: 'mmd-rv1-ddeeff-0',
           device_name: 'Test POS',
           pos_type: 'verifone_commander'
         })
@@ -137,7 +137,7 @@ describe('SimplifiedMicromanager', () => {
 
   // Define mockPayload at describe level for shared access
   const mockPayload = {
-    micromanager_id: 'mmd-rv1-ddeeff',
+    micromanager_id: 'mmd-rv1-ddeeff-0',
     device_name: 'Test POS',
     pos_type: 'verifone_commander',
     raw_line: 'test data',
@@ -158,7 +158,7 @@ describe('SimplifiedMicromanager', () => {
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'X-Device-ID': 'mmd-rv1-ddeeff',
+            'X-Device-ID': 'mmd-rv1-ddeeff-0',
             'X-Device-Name': 'Test POS',
             'X-POS-Type': 'verifone_commander'
           }),
@@ -271,7 +271,7 @@ describe('SimplifiedMicromanager', () => {
       const existingData = [
         {
           timestamp: '2025-01-15T09:00:00.000Z',
-          deviceId: 'mmd-rv1-ddeeff',
+          deviceId: 'mmd-rv1-ddeeff-0',
           deviceName: 'Test POS',
           data: { existing: 'data' }
         }
@@ -333,7 +333,7 @@ describe('SimplifiedMicromanager', () => {
       const status = micromanager.getStatus();
 
       expect(status).toMatchObject({
-        deviceId: 'mmd-rv1-ddeeff',
+        deviceId: 'mmd-rv1-ddeeff-0',
         deviceName: 'Test POS',
         posType: 'verifone_commander',
         isOnline: true,
