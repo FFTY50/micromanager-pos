@@ -46,6 +46,7 @@ After=network.target
 Type=simple
 User=micromanager
 Group=micromanager
+SupplementaryGroups=dialout
 WorkingDirectory=/opt/micromanager-%i
 ExecStart=/usr/bin/node app/src/app.js
 EnvironmentFile=/etc/micromanager/%i.env
