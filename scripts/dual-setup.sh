@@ -18,6 +18,11 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_DIR="/etc/micromanager"
 SERVICE_TEMPLATE="/etc/systemd/system/micromanager@.service"
 
+# Webhook URL configuration
+# Prefer environment N8N_WEBHOOK_URL if set; otherwise use the standard URL.
+N8N_URL_DEFAULT="https://n8n-vcni0-u35184.vm.elestio.app/webhook/parse-pos-line"
+N8N_URL="${N8N_WEBHOOK_URL:-$N8N_URL_DEFAULT}"
+
 echo -e "${BLUE}=== Micromanager Dual Instance Setup ===${NC}"
 
 # Root check
@@ -77,7 +82,7 @@ for PORT in "${PORTS[@]}"; do
   if [[ ! -f "$ENV_FILE" ]]; then
     cat > "$ENV_FILE" <<ENVEOF
 SERIAL_PORT=/dev/$PORT
-N8N_WEBHOOK_URL=https://n8n-vcni0-u35184.vm.elestio.app/webhook/parse-pos-line
+N8N_WEBHOOK_URL=$N8N_URL
 DEVICE_NAME=register-$PORT
 ENVEOF
     echo -e "${GREEN}✓ Created $ENV_FILE${NC}"

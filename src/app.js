@@ -25,7 +25,8 @@ async function main() {
       deviceId: config.deviceId,
       deviceName: config.deviceName,
       posType: config.posType,
-      hasWebhookUrl: !!config.n8nWebhookUrl
+      hasWebhookUrl: !!config.n8nWebhookUrl,
+      n8nWebhookUrl: config.n8nWebhookUrl || '(not set)'
     });
 
     // Create and start micromanager
