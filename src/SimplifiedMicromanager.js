@@ -330,7 +330,8 @@ class SimplifiedMicromanager {
    * @param {Object} data - Data to backup
    */
   async saveToLocalBackup(type, data) {
-    const filename = `${type}-${new Date().toISOString().slice(0, 10)}.json`;
+    const safeDeviceId = this.deviceId?.toString().replace(/[^a-zA-Z0-9_-]/g, '-') || 'unknown-device';
+    const filename = `${type}-${safeDeviceId}-${new Date().toISOString().slice(0, 10)}.json`;
     const filepath = path.join(this.logDir, filename);
     
     try {
