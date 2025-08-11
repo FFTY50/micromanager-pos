@@ -102,15 +102,15 @@ curl http://localhost:3000/health
 The micromanager automatically generates a unique device ID on first run:
 
 ```bash
-# Device ID format: mmd-rv1-{last6MAC}
-# Example: mmd-rv1-ddeeff (from MAC aa:bb:cc:dd:ee:ff)
+# Device ID format: mmd-rv1-{last6MAC}-{port}
+# Example: mmd-rv1-ddeeff-0 (from MAC aa:bb:cc:dd:ee:ff on ttyUSB0)
 ```
 
 Configuration is stored in `config/device.json`:
 
 ```json
 {
-  "deviceId": "mmd-rv1-ddeeff",
+  "deviceId": "mmd-rv1-ddeeff-0",
   "deviceName": "POS Terminal 101",
   "posType": "verifone_commander",
   "n8nWebhookUrl": "https://n8n.yourserver.com/webhook/parse-pos-line",
@@ -130,7 +130,7 @@ Each POS line is sent to your n8n webhook as:
 
 ```json
 {
-  "micromanager_id": "mmd-rv1-ddeeff",
+  "micromanager_id": "mmd-rv1-ddeeff-0",
   "device_name": "POS Terminal 101",
   "pos_type": "verifone_commander",
   "raw_line": "07/11/25 03:33:19 102 COCA COLA 1 2.50",
@@ -143,10 +143,10 @@ Each POS line is sent to your n8n webhook as:
 
 ```
 Content-Type: application/json
-X-Device-ID: mmd-rv1-ddeeff
+X-Device-ID: mmd-rv1-ddeeff-0
 X-Device-Name: POS Terminal 101
 X-POS-Type: verifone_commander
-User-Agent: SimplifiedMicromanager/mmd-rv1-ddeeff
+User-Agent: SimplifiedMicromanager/mmd-rv1-ddeeff-0
 ```
 
 ## 🛡️ Reliability Features

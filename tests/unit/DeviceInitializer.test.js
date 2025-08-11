@@ -39,26 +39,26 @@ describe('DeviceInitializer', () => {
   describe('generateDeviceId', () => {
     test('should generate correct device ID format from MAC address', () => {
       const macAddress = 'aa:bb:cc:dd:ee:ff';
-      const deviceId = DeviceInitializer.generateDeviceId(macAddress);
-      expect(deviceId).toBe('mmd-rv1-ddeeff');
+      const deviceId = DeviceInitializer.generateDeviceId(macAddress, '/dev/ttyUSB0');
+      expect(deviceId).toBe('mmd-rv1-ddeeff-0');
     });
 
     test('should handle MAC address with dashes', () => {
       const macAddress = 'aa-bb-cc-dd-ee-ff';
-      const deviceId = DeviceInitializer.generateDeviceId(macAddress);
-      expect(deviceId).toBe('mmd-rv1-ddeeff');
+      const deviceId = DeviceInitializer.generateDeviceId(macAddress, '/dev/ttyUSB0');
+      expect(deviceId).toBe('mmd-rv1-ddeeff-0');
     });
 
     test('should handle uppercase MAC address', () => {
       const macAddress = 'AA:BB:CC:DD:EE:FF';
-      const deviceId = DeviceInitializer.generateDeviceId(macAddress);
-      expect(deviceId).toBe('mmd-rv1-ddeeff');
+      const deviceId = DeviceInitializer.generateDeviceId(macAddress, '/dev/ttyUSB0');
+      expect(deviceId).toBe('mmd-rv1-ddeeff-0');
     });
 
     test('should handle mixed case MAC address', () => {
       const macAddress = 'aA:Bb:cC:Dd:Ee:Ff';
-      const deviceId = DeviceInitializer.generateDeviceId(macAddress);
-      expect(deviceId).toBe('mmd-rv1-ddeeff');
+      const deviceId = DeviceInitializer.generateDeviceId(macAddress, '/dev/ttyUSB0');
+      expect(deviceId).toBe('mmd-rv1-ddeeff-0');
     });
   });
 
@@ -140,7 +140,7 @@ describe('DeviceInitializer', () => {
   describe('validateConfig', () => {
     test('should validate correct configuration', () => {
       const config = {
-        deviceId: 'mmd-rv1-ddeeff',
+        deviceId: 'mmd-rv1-ddeeff-0',
         deviceName: 'Test POS',
         posType: 'verifone_commander',
         serialPort: '/dev/ttyUSB0',
@@ -167,7 +167,7 @@ describe('DeviceInitializer', () => {
 
     test('should reject missing required fields', () => {
       const config = {
-        deviceId: 'mmd-rv1-ddeeff',
+        deviceId: 'mmd-rv1-ddeeff-0',
         // Missing deviceName
         posType: 'verifone_commander',
         serialPort: '/dev/ttyUSB0',
@@ -187,7 +187,7 @@ describe('DeviceInitializer', () => {
   describe('getOrCreateConfig', () => {
     test('should load existing valid configuration', async () => {
       const existingConfig = {
-        deviceId: 'mmd-rv1-ddeeff',
+        deviceId: 'mmd-rv1-ddeeff-0',
         deviceName: 'Existing POS',
         posType: 'verifone_commander',
         serialPort: '/dev/ttyUSB0',
@@ -200,7 +200,7 @@ describe('DeviceInitializer', () => {
 
       const config = await DeviceInitializer.getOrCreateConfig();
       
-      expect(config.deviceId).toBe('mmd-rv1-ddeeff');
+      expect(config.deviceId).toBe('mmd-rv1-ddeeff-0');
       // Environment variable should override the config
       expect(config.deviceName).toBe('Test POS'); // From process.env.DEVICE_NAME
       expect(fs.readFile).toHaveBeenCalledWith(mockConfigPath, 'utf8');
@@ -225,7 +225,7 @@ describe('DeviceInitializer', () => {
 
       const config = await DeviceInitializer.getOrCreateConfig();
       
-      expect(config.deviceId).toBe('mmd-rv1-ddeeff');
+      expect(config.deviceId).toBe('mmd-rv1-ddeeff-0');
       expect(config.deviceName).toBe('Test POS');
       expect(config.posType).toBe('verifone_commander');
       expect(config.n8nWebhookUrl).toBe('https://test.n8n.com/webhook');
@@ -258,7 +258,7 @@ describe('DeviceInitializer', () => {
 
       const config = await DeviceInitializer.getOrCreateConfig();
       
-      expect(config.deviceId).toBe('mmd-rv1-ddeeff');
+      expect(config.deviceId).toBe('mmd-rv1-ddeeff-0');
       expect(config.deviceName).toBe('Test POS');
       expect(fs.writeFile).toHaveBeenCalled();
     });
@@ -267,7 +267,7 @@ describe('DeviceInitializer', () => {
   describe('updateConfig', () => {
     test('should update existing configuration', async () => {
       const existingConfig = {
-        deviceId: 'mmd-rv1-ddeeff',
+        deviceId: 'mmd-rv1-ddeeff-0',
         deviceName: 'Test POS',
         posType: 'verifone_commander',
         serialPort: '/dev/ttyUSB0',
@@ -289,7 +289,7 @@ describe('DeviceInitializer', () => {
       
       expect(updatedConfig.n8nWebhookUrl).toBe('https://new.n8n.com/webhook');
       expect(updatedConfig.retryAttempts).toBe(5);
-      expect(updatedConfig.deviceId).toBe('mmd-rv1-ddeeff'); // Preserved
+      expect(updatedConfig.deviceId).toBe('mmd-rv1-ddeeff-0'); // Preserved
       expect(updatedConfig.updatedAt).toBeDefined();
       expect(fs.writeFile).toHaveBeenCalled();
     });

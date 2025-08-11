@@ -5,7 +5,7 @@ const logger = require('./Logger');
 
 /**
  * DeviceInitializer - Handles device configuration and ID generation
- * Generates special format device IDs: mmd-rv1-{last6MAC}
+ * Generates device IDs in format: mmd-rv1-{last6MAC}-{port}
  */
 class DeviceInitializer {
   static configPath = path.join(process.cwd(), 'config', 'device.json');
@@ -60,7 +60,8 @@ class DeviceInitializer {
    */
   static async createNewConfig() {
     const macAddress = await this.getMacAddress();
-    const deviceId = this.generateDeviceId(macAddress);
+    const serialPort = process.env.SERIAL_PORT || '/dev/ttyUSB0';
+    const deviceId = this.generateDeviceId(macAddress, serialPort);
 
     const config = {
       deviceId,
@@ -68,7 +69,7 @@ class DeviceInitializer {
       posType: process.env.POS_TYPE || 'verifone_commander',
       n8nWebhookUrl: process.env.N8N_WEBHOOK_URL || '',
       frigateUrl: process.env.FRIGATE_URL || '',
-      serialPort: process.env.SERIAL_PORT || '/dev/ttyUSB0',
+      serialPort,
       serialBaudRate: parseInt(process.env.SERIAL_BAUD_RATE) || 9600,
       localBackupEnabled: true,
       retryAttempts: parseInt(process.env.RETRY_ATTEMPTS) || 3,
@@ -89,14 +90,17 @@ class DeviceInitializer {
   }
 
   /**
-   * Generate device ID in format: mmd-rv1-{last6MAC}
+   * Generate device ID in format: mmd-rv1-{last6MAC}-{port}
    * @param {string} macAddress - MAC address (e.g., "aa:bb:cc:dd:ee:ff")
-   * @returns {string} Device ID (e.g., "mmd-rv1-ddeeff")
+   * @param {string} serialPort - Serial port path (e.g., "/dev/ttyUSB0")
+   * @returns {string} Device ID (e.g., "mmd-rv1-ddeeff-0")
    */
-  static generateDeviceId(macAddress) {
+  static generateDeviceId(macAddress, serialPort = '/dev/ttyUSB0') {
     const cleanMac = macAddress.replace(/[:-]/g, '').toLowerCase();
     const last6Digits = cleanMac.slice(-6);
-    return `mmd-rv1-${last6Digits}`;
+    const match = serialPort.match(/ttyUSB(\d+)/);
+    const portSuffix = match ? match[1] : '0';
+    return `mmd-rv1-${last6Digits}-${portSuffix}`;
   }
 
   /**
@@ -206,7 +210,7 @@ class DeviceInitializer {
     }
 
     // Validate device ID format
-    if (!config.deviceId.match(/^mmd-rv1-[a-f0-9]{6}$/)) {
+    if (!config.deviceId.match(/^mmd-rv1-[a-f0-9]{6}-\d+$/)) {
       logger.warn('Invalid device ID format', { deviceId: config.deviceId });
       return false;
     }

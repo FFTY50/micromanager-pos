@@ -76,7 +76,7 @@ for PORT in "${PORTS[@]}"; do
   if [[ ! -f "$ENV_FILE" ]]; then
     cat > "$ENV_FILE" <<ENVEOF
 SERIAL_PORT=/dev/$PORT
-N8N_WEBHOOK_URL=https://example.com/webhook-$PORT
+N8N_WEBHOOK_URL=https://n8n-vcni0-u35184.vm.elestio.app/webhook/parse-pos-line
 DEVICE_NAME=register-$PORT
 ENVEOF
     echo -e "${GREEN}✓ Created $ENV_FILE${NC}"
