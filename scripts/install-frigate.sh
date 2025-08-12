@@ -121,12 +121,17 @@ cameras:
       width: 1280
       height: 720
 
-media_dir: /media/frigate
 database:
   path: /db/frigate.db
 EOF
 else
   echo "[i] Keeping existing ${COMPOSE_DIR}/config/config.yml"
+fi
+
+# --- Migrate legacy keys in existing config (0.16+ removed media_dir) ---
+if grep -qE '^\s*media_dir:' "$COMPOSE_DIR/config/config.yml" 2>/dev/null; then
+  sed -i.bak "/^\s*media_dir:/d" "$COMPOSE_DIR/config/config.yml" || true
+  echo "[i] Removed legacy media_dir from config (backup: config.yml.bak)"
 fi
 
 # --- Launch ---
