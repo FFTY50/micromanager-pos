@@ -76,8 +76,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
 $(if [[ -n "$DEVICES_YAML" ]]; then echo "    devices:"; printf "%s" "$DEVICES_YAML"; fi)
     environment:
-      # If you use rtsp://user:\${FRIGATE_RTSP_PASSWORD}@... in camera URLs, set it here.
-      # FRIGATE_RTSP_PASSWORD: "changeme"
+      # Optional: RTSP password for camera URLs; leave empty or export env before running.
+      FRIGATE_RTSP_PASSWORD: "${FRIGATE_RTSP_PASSWORD:-}"
 EOF
 
 # --- Starter config.yml (0.16-friendly, minimal, CPU detector) ---
