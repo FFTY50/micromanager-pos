@@ -92,6 +92,32 @@ ENVEOF
 
 done
 
+# Install Node.js dependencies (shared repo) and fix log permissions
+echo -e "${YELLOW}Installing Node.js dependencies (if needed)...${NC}"
+if command -v npm >/dev/null 2>&1; then
+  # Prefer npm ci; fallback to npm install --production
+  su -s /bin/bash -c "cd '$BASE_DIR' && (npm ci --omit=dev || npm install --production)" $SERVICE_USER \
+    && echo -e "${GREEN}✓ Dependencies installed${NC}" \
+    || echo -e "${YELLOW}⚠️  Skipped dependency install (npm error)${NC}"
+else
+  echo -e "${YELLOW}⚠️  npm not found; skipping dependency install${NC}"
+fi
+
+echo -e "${YELLOW}Ensuring transaction-logs permissions...${NC}"
+LOG_DIRS=(
+  "/opt/micromanager-pos/transaction-logs"
+  "/opt/micromanager-cloud/transaction-logs"
+)
+for d in "${LOG_DIRS[@]}"; do
+  mkdir -p "$d"
+  chown -R "$SERVICE_USER:$SERVICE_USER" "$d"
+  chmod 755 "$d"
+done
+if [[ -x "$BASE_DIR/scripts/fix-logs-perms.sh" ]]; then
+  sudo "$BASE_DIR/scripts/fix-logs-perms.sh" || true
+fi
+echo -e "${GREEN}✓ Log directories ready${NC}"
+
 # Enable services
 systemctl daemon-reload
 for PORT in "${PORTS[@]}"; do
