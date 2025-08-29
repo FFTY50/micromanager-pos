@@ -8,7 +8,7 @@ set -euo pipefail
 COMPOSE_DIR="/opt/frigate"
 STORAGE_DIR="/srv/frigate"
 # Allow override via env var; default to 0.16 RC image
-IMAGE="${FRIGATE_IMAGE:-ghcr.io/blakeblackshear/frigate:0.16.0-rc3}"
+IMAGE="${FRIGATE_IMAGE:-ghcr.io/blakeblackshear/frigate:stable}"
 UI_PORT="${FRIGATE_UI_PORT:-8971}"     # external
 COMPAT_PORT="${FRIGATE_COMPAT_PORT:-5000}"  # internal-only
 SHM_MB="${FRIGATE_SHM_MB:-512}"        # ffmpeg shared mem
@@ -147,7 +147,7 @@ docker compose pull
 docker compose up -d --force-recreate --remove-orphans
 
 echo
-echo "Frigate 0.16 RC is spinning up."
+echo "Frigate 0.16 Stable is spinning up."
 echo "External (UI/API):   http://<HOST>:${UI_PORT}"
 echo "Internal-only API:   http://127.0.0.1:${COMPAT_PORT}"
 echo "Compose dir:         ${COMPOSE_DIR}"
