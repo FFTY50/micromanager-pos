@@ -9,6 +9,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/ tests/",
+    "frigate:explore": "node scripts/test-frigate-explore.js",
     "prepare:dirs": "node scripts/prepare-dirs.js"
   },
   "keywords": [

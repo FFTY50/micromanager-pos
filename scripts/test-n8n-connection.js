@@ -23,7 +23,7 @@ const testPayload = {
   device_name: 'Test POS Terminal',
   pos_type: 'verifone_commander',
   raw_line: '\x1bc0\x01\x1b!\x0007/23/25 10:15:01 102 L  Monster Blue Hawaiia   1        3.49 \x0a',
-  frigate_url: 'https://testermvp-trey.us2.pitunnel.net',
+  frigate_url: 'http://127.0.0.1:5000',
   timestamp: new Date().toISOString(),
   line_length: 85
 };

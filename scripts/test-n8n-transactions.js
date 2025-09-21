@@ -50,7 +50,7 @@ async function sendTransactionLine(rawLine, transactionId, lineNumber) {
     device_name: 'camera_01',
     pos_type: 'verifone_commander',
     raw_line: rawLine,
-    frigate_url: 'https://testermvp-trey.us2.pitunnel.net',
+    frigate_url: 'http://127.0.0.1:5000',
     timestamp: new Date().toISOString(),
     line_length: rawLine.length,
     test_metadata: {

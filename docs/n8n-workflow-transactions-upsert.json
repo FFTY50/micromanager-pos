@@ -1,0 +1,84 @@
+{
+  "name": "transactions (upsert)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "transactions",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "23bd54ca-afd9-43bc-947c-f5dbe670e9f1",
+      "name": "Webhook",
+      "webhookId": "90687cb8-43d3-4929-9a50-2b28f335b876"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "json": [
+            { "name": "micromanager_id", "value": "={{ $json.micromanager_id }}" },
+            { "name": "device_name", "value": "={{ $json.device_name }}" },
+            { "name": "terminal_id", "value": "={{ $json.terminal_id }}" },
+            { "name": "pos_type", "value": "={{ $json.pos_type || 'verifone_commander' }}" },
+            { "name": "transaction_number", "value": "={{ $json.transaction_number }}" },
+            { "name": "total_amount", "value": "={{ $json.total_amount ?? null }}" },
+            { "name": "item_count", "value": "={{ $json.item_count ?? null }}" },
+            { "name": "line_count", "value": "={{ $json.line_count ?? null }}" },
+            { "name": "cash_amount", "value": "={{ $json.cash_amount ?? null }}" },
+            { "name": "credit_amount", "value": "={{ $json.credit_amount ?? null }}" },
+            { "name": "debit_amount", "value": "={{ $json.debit_amount ?? null }}" },
+            { "name": "preauth_amount", "value": "={{ $json.preauth_amount ?? null }}" },
+            { "name": "transaction_started_at", "value": "={{ $json.transaction_started_at ?? null }}" },
+            { "name": "transaction_completed_at", "value": "={{ $json.transaction_completed_at ?? null }}" },
+            { "name": "pos_metadata", "value": "={{ $json.pos_metadata ?? null }}" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "name": "Set → transactions schema",
+      "id": "f1c2b3a4-1111-2222-3333-444455556666"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/transactions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Prefer", "value": "return=representation" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [520, 0],
+      "name": "HTTP - Insert Transaction",
+      "id": "d64271fd-04a7-4d79-985b-dabed779c9d8",
+      "credentials": {
+        "httpBearerAuth": { "id": "VSs1DYPksaQwuzbl", "name": "supabase-ssr-header" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Set → transactions schema", "type": "main", "index": 0 }]] },
+    "Set → transactions schema": { "main": [[{ "node": "HTTP - Insert Transaction", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "e5636e14-ba43-466c-ac55-6de27d90ef5c",
+  "id": "2xcuF5WIMPkJ8tXH",
+  "tags": []
+}

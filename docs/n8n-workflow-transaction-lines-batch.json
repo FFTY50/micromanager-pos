@@ -1,0 +1,55 @@
+{
+  "name": "transaction-lines (batch)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "transaction_lines",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "8a665683-e654-4e5a-ad13-b7a5925dfcaf",
+      "name": "Webhook",
+      "webhookId": "e6ebf72b-e7f4-4f7f-8fb4-73fcc4f89c9f"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/transaction_lines",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Prefer", "value": "return=representation" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.lines }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [280, 0],
+      "name": "HTTP - Insert Lines",
+      "id": "279c1c29-c418-43f1-88f7-e76be79c69c9",
+      "credentials": {
+        "httpBearerAuth": { "id": "VSs1DYPksaQwuzbl", "name": "supabase-ssr-header" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "HTTP - Insert Lines", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "3badf660-2729-4ee7-98d7-0d122a6276b7",
+  "id": "JGi5n5n8j0QTv8ua",
+  "tags": []
+}
+

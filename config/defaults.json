@@ -7,7 +7,7 @@
     "paths": ["/dev/ttyUSB0", "/dev/ttyUSB1", "/dev/ttyUSB2", "/dev/ttyUSB3"]
   },
   "ignorePrefixes": ["ALARM"],
-  "postLinesAsBatch": true,
+  "postLinesAsBatch": false,
   "queue": {
     "dbPath": "/var/lib/micromanager/queue.db",
     "maxBytes": 500000000,
@@ -16,7 +16,7 @@
   },
   "frigate": {
     "enabled": true,
-    "baseUrl": null,
+    "baseUrl": "http://127.0.0.1:5000",
     "cameraName": null,
     "label": "transaction",
     "durationSeconds": 900,

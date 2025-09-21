@@ -1,12 +1,17 @@
 /* eslint-disable no-control-regex */
 const TS_RE = /\b\d{2}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\b/g;
 
+// Some lines include a timestamp + terminal id before the keyword
+const TS_PREFIX = String.raw`(?:\d{2}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s+\d+\s+)?`;
+
 const RE = {
   END_HEADER: /\bST#(?<store>\S+)\s+DR#(?<drawer>\S+)\s+TRAN#(?<txn>\d+)/,
   CASHIER: /\bCSH:\s*(?<cashier>[A-Z0-9 .'-]+)/,
-  TOTAL: /^TOTAL\s+(?<amount>-?\d+(?:\.\d{1,2})?)$/,
-  CASH: /^CASH\s+(?<amount>-?\d+(?:\.\d{1,2})?)$/,
-  DEBIT: /^DEBIT\s+(?<amount>-?\d+(?:\.\d{1,2})?)$/,
+  TOTAL: new RegExp(`^${TS_PREFIX}TOTAL\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
+  CASH: new RegExp(`^${TS_PREFIX}CASH\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
+  DEBIT: new RegExp(`^${TS_PREFIX}DEBIT\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
+  CREDIT: new RegExp(`^${TS_PREFIX}CREDIT\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
+  PREAUTH: new RegExp(`^${TS_PREFIX}PREAUTH\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
   ITEM: /^(?<desc>.+?)\s+(?<qty>-?\d+(?:\.\d+)?)\s+(?<amount>-?\d+(?:\.\d{1,2})?)$/,
   IGNORE: /^ALARM\b/i,
 };
@@ -57,6 +62,10 @@ function classify(raw) {
   if (mCash) return { type: 'cash', line, amount: Number(mCash.groups.amount) };
   const mDebit = line.match(RE.DEBIT);
   if (mDebit) return { type: 'debit', line, amount: Number(mDebit.groups.amount) };
+  const mCredit = line.match(RE.CREDIT);
+  if (mCredit) return { type: 'credit', line, amount: Number(mCredit.groups.amount) };
+  const mPreauth = line.match(RE.PREAUTH);
+  if (mPreauth) return { type: 'preauth', line, amount: Number(mPreauth.groups.amount) };
   const mItem = line.match(RE.ITEM);
   if (mItem) {
     return {

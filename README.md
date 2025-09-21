@@ -53,8 +53,10 @@ src/server/{health,metrics}.js
    # optional overrides
    export SERIAL_PORT=/dev/ttyUSB0
    export SERIAL_BAUD=9600
-   export POST_LINES_AS_BATCH=true
-   export FRIGATE_BASE=http://frigate:5000
+   # Single-line posting (default). Set to true only if you need batch inserts
+   export POST_LINES_AS_BATCH=false
+   # Frigate: local default
+   export FRIGATE_BASE=http://127.0.0.1:5000
    ```
 3. **Run the agent**
    ```bash
@@ -71,7 +73,7 @@ src/server/{health,metrics}.js
 
 - `SERIAL_PORT` – explicit serial device (otherwise autodetects `/dev/ttyUSB*`).
 - `SERIAL_BAUD` – defaults to 9600.
-- `POST_LINES_AS_BATCH` – when `true`, posts `{ lines: [...] }` once per transaction; otherwise enqueues individual line payloads.
+- `POST_LINES_AS_BATCH` – when `false` (default), posts each line individually for realtime updates; when `true`, posts a single `{ lines: [...] }` array per transaction (batch mode).
 - `FRIGATE_*` variables – control camera name, label, duration, remote-role header, and retention behaviour.
 - `QUEUE_DB_PATH`, `QUEUE_MAX_BYTES`, `QUEUE_MAX_AGE_SECONDS` – tune SQLite queue location and retention limits.
 
@@ -144,7 +146,10 @@ micromanager:
   environment:
     N8N_LINES_URL: https://n8n.../webhook/transaction_lines
     N8N_TXNS_URL:  https://n8n.../webhook/transactions
-    FRIGATE_BASE:  http://frigate:5000
+    # If running inside the same Docker network as Frigate, use the service name:
+    # FRIGATE_BASE:  http://frigate:5000
+    # For local (host) Frigate, use localhost:
+    FRIGATE_BASE:  http://127.0.0.1:5000
     POST_LINES_AS_BATCH: "true"
 ```
 Prepare the host environment once:

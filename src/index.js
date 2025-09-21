@@ -101,7 +101,7 @@ async function finalizeTransaction(txn, nowMs) {
     const totalLine = [...txn.lines.filter((line) => line.line_type === 'total')].pop();
     const tenderTotals = {};
     txn.lines.forEach((line) => {
-      if (line.line_type === 'cash' || line.line_type === 'debit') {
+      if (line.line_type === 'cash' || line.line_type === 'debit' || line.line_type === 'credit' || line.line_type === 'preauth') {
         const key = line.line_type;
         const existing = tenderTotals[key] || 0;
         tenderTotals[key] = existing + (typeof line.amount === 'number' ? line.amount : 0);
@@ -112,16 +112,23 @@ async function finalizeTransaction(txn, nowMs) {
       micromanager_id: MICROMANAGER_ID,
       device_name: DEVICE_NAME,
       terminal_id: txn.meta?.terminal_id || TERMINAL_ID,
+      pos_type: defaults.posType || null,
       transaction_number: txn.meta?.transaction_number || null,
-      drawer_id: txn.meta?.drawer_id || DRAWER_ID_ENV || null,
-      store_id: txn.meta?.store_id || STORE_ID_ENV || null,
-      started_at: txn.startedAt,
-      ended_at: endedAt,
+      total_amount: totalLine ? totalLine.amount : null,
       item_count: items.length,
-      total: totalLine ? totalLine.amount : null,
-      tenders: tenderTotals,
       line_count: txn.lines.length,
-      parser_version: VERSION,
+      cash_amount: typeof tenderTotals.cash === 'number' ? tenderTotals.cash : null,
+      credit_amount: typeof tenderTotals.credit === 'number' ? tenderTotals.credit : null,
+      debit_amount: typeof tenderTotals.debit === 'number' ? tenderTotals.debit : null,
+      preauth_amount: typeof tenderTotals.preauth === 'number' ? tenderTotals.preauth : null,
+      transaction_started_at: txn.startedAt,
+      transaction_completed_at: endedAt,
+      frigate_event_id: txn.frigateEvent?.eventId || null,
+      pos_metadata: {
+        parser_version: VERSION,
+        drawer_id: txn.meta?.drawer_id || DRAWER_ID_ENV || null,
+        store_id: txn.meta?.store_id || STORE_ID_ENV || null,
+      },
     };
 
     const linePayloads = txn.lines.map((line) => ({
@@ -145,7 +152,7 @@ async function finalizeTransaction(txn, nowMs) {
       const subLabel = txn.meta?.transaction_number ? `Txn ${txn.meta.transaction_number}` : undefined;
       const descriptionParts = [];
       if (txn.meta?.transaction_number) descriptionParts.push(`Txn ${txn.meta.transaction_number}`);
-      if (typeof txnPayload.total === 'number') descriptionParts.push(`Total: ${txnPayload.total.toFixed(2)}`);
+      if (typeof txnPayload.total_amount === 'number') descriptionParts.push(`Total: ${txnPayload.total_amount.toFixed(2)}`);
       descriptionParts.push(`Items: ${txnPayload.item_count}`);
       const description = descriptionParts.join(' | ');
       frigateClient

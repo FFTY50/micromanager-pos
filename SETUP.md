@@ -80,7 +80,10 @@ SERIAL_PORT=/dev/ttyUSB0
 SERIAL_BAUD_RATE=9600
 
 # Frigate NVR URL for video correlation
-FRIGATE_URL=https://your-frigate-instance.com
+# Local default; adjust if Frigate runs elsewhere
+FRIGATE_URL=http://127.0.0.1:5000/
+# App uses FRIGATE_BASE for direct calls
+FRIGATE_BASE=http://127.0.0.1:5000
 ```
 
 ### 4. Start the Service
