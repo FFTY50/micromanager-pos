@@ -1,0 +1,53 @@
+networks:
+  nvrnet:
+
+services:
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable
+    container_name: frigate
+    privileged: true
+    restart: unless-stopped
+    shm_size: "512mb"
+    networks: [nvrnet]
+    ports:
+      - "8971:8971"
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./config:/config
+      - /srv/frigate/media:/media/frigate
+      - /srv/frigate/db:/db
+      - /etc/localtime:/etc/localtime:ro
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/bus/usb:/dev/bus/usb
+    environment:
+      FRIGATE_RTSP_PASSWORD: ""
+
+  cloudflared:
+    image: cloudflare/cloudflared:2025.8.1
+    container_name: cloudflared
+    restart: unless-stopped
+    networks: [nvrnet]
+    command: tunnel run --token ${CF_TUNNEL_TOKEN}
+    depends_on: [frigate]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  micromanager:
+    build: ./micromanager
+    container_name: micromanager
+    restart: unless-stopped
+    networks: [nvrnet]
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/ttyUSB1:/dev/ttyUSB1
+    env_file:
+      - /opt/micromanager/.env
+    environment:
+      N8N_LINES_URL: https://n8n-vcni0-u35184.vm.elestio.app/webhook/transaction_lines
+      N8N_TXNS_URL:  https://n8n-vcni0-u35184.vm.elestio.app/webhook/transactions
+      FRIGATE_BASE:  http://frigate:5000
+      SERIAL_BAUD:   "9600"
+      POST_LINES_AS_BATCH: "true"
+      DEVICE_NAME: ${DEVICE_NAME}
+      MICROMANAGER_ID: ${MICROMANAGER_ID}

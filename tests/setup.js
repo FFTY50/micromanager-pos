@@ -1,42 +1,24 @@
-// Test setup file
+const path = require('path');
+
 require('dotenv').config({ path: '.env.test' });
 
-// Set test environment variables
 process.env.NODE_ENV = 'test';
-process.env.LOG_LEVEL = 'error'; // Reduce noise in tests
-process.env.SUPABASE_URL = 'https://test.supabase.co';
-process.env.SUPABASE_KEY = 'test-key';
-process.env.DEVICE_ID = 'test-device';
+process.env.LOG_LEVEL = 'error';
 process.env.SERIAL_PORT = '/dev/null';
+process.env.N8N_LINES_URL = 'https://example.com/lines';
+process.env.N8N_TXNS_URL = 'https://example.com/transactions';
+process.env.FRIGATE_ENABLED = 'false';
+process.env.MICROMANAGER_ID = 'test-micromanager';
+process.env.DEVICE_NAME = 'test-device';
+process.env.TERMINAL_ID = '00:11:22:33:44:55';
+process.env.STORE_ID = 'AB123';
+process.env.DRAWER_ID = '1';
+process.env.QUEUE_DB_PATH = path.join(__dirname, '..', 'test-logs', 'queue-test.db');
 
-// Global test utilities
-global.mockTransaction = {
-  id: 'test-transaction-id',
-  deviceId: 'test-device',
-  totalAmount: 25.99,
-  startTime: new Date(),
-  lines: []
-};
-
-global.mockParsedData = {
-  description: 'TEST ITEM',
-  amount: 5.00,
-  extractedFields: { test: 'value' },
-  parsingSuccess: true,
-  matchedPatterns: ['lineItem'],
-  parsingSuccess: true
-};
-
-// Global test timeouts
 jest.setTimeout(5000);
 
-// Mock console methods to reduce noise in tests
 global.console = {
   ...console,
-  // Uncomment to disable specific log levels in tests
-  // log: jest.fn(),
-  // debug: jest.fn(),
-  // info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn()
 };

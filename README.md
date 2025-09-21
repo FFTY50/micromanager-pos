@@ -1,335 +1,175 @@
-# 🚀 Simplified Micromanager
+# Micromanager Edge v1
 
-> **Raw POS Data Forwarder - Serial to n8n Webhook**
+Micromanager Edge is a single-container edge agent for Verifone Commander POS systems. It reads raw serial data at the store, parses transactions locally, queues payloads to disk, posts `transaction_line` and `transactions` batches to n8n, and signals nearby Frigate NVR instances for video bookmarking.
 
-A lightweight, reliable POS data forwarder that captures raw serial data from Point-of-Sale systems and forwards it directly to n8n webhooks for cloud-based processing. No local parsing, maximum reliability.
+## Features
 
-## 🎯 Overview
+- **On-device parsing** for the Verifone Commander journal format with resilient handling of mashed end-of-receipt lines.
+- **Stateful transaction machine** that emits line payloads, tallies tenders, and finalises transactions when the `CSH:` line arrives.
+- **Disk-backed queue** using SQLite WAL with exponential backoff (1s → 60s, 5 minute pause after 10 retries) and FIFO trimming once older than seven days or when 500 MB is exceeded.
+- **Frigate integration** to start, annotate, optionally retain, and end camera events for every transaction window.
+- **Health endpoint** at `/healthz` plus optional Prometheus metrics (`/metrics`) exposing queue depth, parse errors, processed lines, and HTTP post latency histograms.
+- **Docker-ready** Node.js 20 image that autodetects `/dev/ttyUSB*` ports and ships helper scripts for directory prep and host MAC discovery.
 
-Simplified Micromanager transforms the traditional complex POS processing approach into a streamlined data forwarding solution. It captures raw transaction data from serial interfaces and sends it directly to your n8n workflows, where all parsing and processing logic resides.
-
-### Key Features
-
-- **📡 Raw Data Forwarding**: Sends unprocessed POS data directly to n8n webhooks
-- **🆔 Smart Device ID**: Auto-generates unique device IDs in format `mmd-rv1-{last6MAC}`
-- **🛡️ Zero Data Loss**: Robust local backup with 30-day retention during network outages
-- **🔄 Auto-Recovery**: Exponential backoff retry logic with offline queuing
-- **☁️ Cloud-First Processing**: All parsing and business logic handled in n8n workflows
-- **📊 Comprehensive Monitoring**: Health checks, statistics, and status reporting
-- **🔧 Minimal Configuration**: Environment-based setup with intelligent defaults
-
-## 🏗️ Architecture
-
-### Current (Simplified):
-```
-POS → Serial → Micromanager → [Raw Data + Local Backup] → n8n Webhook → [Cloud Processing]
-```
-
-### Previous (Complex):
-```
-POS → Serial → Micromanager → [VerifoneParser + SmartTransactionProcessor + Frigate API] → Supabase
-```
-
-### Key Components
-
-- **DeviceInitializer**: Auto-generates unique device IDs and manages configuration
-- **SimplifiedMicromanager**: Core data forwarding engine with retry logic
-- **Local Backup System**: Daily JSON files with automatic 30-day cleanup
-- **Health Monitoring**: Built-in status reporting and statistics tracking
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+ 
-- n8n instance with webhook endpoint
-- Serial port connection to POS system
-- Network connectivity for webhook calls
-
-### Installation
-
-```bash
-# Clone the project
-git clone <repository-url>
-cd micromanager-cloud
-
-# Install dependencies
-npm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your n8n webhook URL and device settings
-```
-
-### Configuration
-
-Edit `.env` file with your settings:
-
-```bash
-# Required: n8n webhook URL
-N8N_WEBHOOK_URL=https://n8n.yourserver.com/webhook/parse-pos-line
-
-# Device configuration
-DEVICE_NAME=POS Terminal 101
-POS_TYPE=verifone_commander
-SERIAL_PORT=/dev/ttyUSB0
-SERIAL_BAUD_RATE=9600
-
-# Optional: Retry configuration
-RETRY_ATTEMPTS=3
-RETRY_DELAY_MS=1000
+## Directory Layout
 
 ```
-
-### Running
-
-```bash
-# Development mode with auto-restart
-npm run dev
-
-# Production mode
-npm start
-
-# Optional: Enable health check server
-ENABLE_HEALTH_SERVER=true npm start
-
-# Check health (if enabled)
-curl http://localhost:3000/health
+config/defaults.json        # Runtime defaults (serial, queue, frigate, etc.)
+scripts/prepare-dirs.js     # Ensures queue/log directories exist
+scripts/get-host-mac.sh     # Host helper to capture NIC MAC address
+src/index.js                # Application entry point / bootstrapper
+src/parser/verifoneCommander.js
+src/state/txnMachine.js
+src/queue/sqliteQueue.js
+src/http/{client,frigate}.js
+src/serial/autoDetect.js
+src/server/{health,metrics}.js
 ```
 
-## 📡 Device Configuration
+## Requirements
 
-The micromanager automatically generates a unique device ID on first run:
+- Node.js 20 (LTS) and npm
+- Access to the POS serial device (`/dev/ttyUSB*`)
+- n8n webhooks:
+  - `N8N_LINES_URL`
+  - `N8N_TXNS_URL`
+- Host MAC address exposed via environment variable (preferably `HOST_ETH0_MAC`)
+- Optional: Frigate reachable at `FRIGATE_BASE`
 
-```bash
-# Device ID format: mmd-rv1-{last6MAC}-{port}
-# Example: mmd-rv1-ddeeff-0 (from MAC aa:bb:cc:dd:ee:ff on ttyUSB0)
-```
+## Quick Start
 
-Configuration is stored in `config/device.json`:
+1. **Install dependencies**
+   ```bash
+   npm install
+   npm run prepare:dirs
+   ```
+2. **Configure environment**
+   ```bash
+   export N8N_LINES_URL=https://example/webhook/transaction_lines
+   export N8N_TXNS_URL=https://example/webhook/transactions
+   export HOST_ETH0_MAC=$(./scripts/get-host-mac.sh)
+   export MICROMANAGER_ID=$(cat /etc/machine-id)
+   export DEVICE_NAME=$(hostname -s)
+   # optional overrides
+   export SERIAL_PORT=/dev/ttyUSB0
+   export SERIAL_BAUD=9600
+   export POST_LINES_AS_BATCH=true
+   export FRIGATE_BASE=http://frigate:5000
+   ```
+3. **Run the agent**
+   ```bash
+   npm start
+   ```
+4. **Check health**
+   ```bash
+   curl http://localhost:3000/healthz
+   # Optional metrics
+   curl http://localhost:3000/metrics
+   ```
 
+## Configuration Highlights
+
+- `SERIAL_PORT` – explicit serial device (otherwise autodetects `/dev/ttyUSB*`).
+- `SERIAL_BAUD` – defaults to 9600.
+- `POST_LINES_AS_BATCH` – when `true`, posts `{ lines: [...] }` once per transaction; otherwise enqueues individual line payloads.
+- `FRIGATE_*` variables – control camera name, label, duration, remote-role header, and retention behaviour.
+- `QUEUE_DB_PATH`, `QUEUE_MAX_BYTES`, `QUEUE_MAX_AGE_SECONDS` – tune SQLite queue location and retention limits.
+
+All defaults are defined in `config/defaults.json` and merged with environment overrides at runtime.
+
+## Data Contracts
+
+Transaction line payloads follow:
 ```json
 {
-  "deviceId": "mmd-rv1-ddeeff-0",
-  "deviceName": "POS Terminal 101",
-  "posType": "verifone_commander",
-  "n8nWebhookUrl": "https://n8n.yourserver.com/webhook/parse-pos-line",
-  "serialPort": "/dev/ttyUSB0",
-  "serialBaudRate": 9600,
-  "localBackupEnabled": true,
-  "retryAttempts": 3,
-  "retryDelayMs": 1000
+  "micromanager_id": "string",
+  "device_name": "string",
+  "device_timestamp": "ISO8601",
+  "line_type": "item|total|cash|debit|end_header|cashier|unknown",
+  "description": "string",
+  "qty": 1,
+  "amount": 12.34,
+  "raw_line": "string",
+  "parsed_successfully": true,
+  "transaction_position": 0,
+  "transaction_number": "1023612",
+  "pos_metadata": {
+    "pos_type": "verifone_commander",
+    "parser_version": "v1.0.0",
+    "terminal_id": "aa:bb:cc:dd:ee:ff",
+    "drawer_id": "1",
+    "store_id": "AB123"
+  },
+  "frigate_url": null
 }
 ```
 
-## 📊 Data Flow
-
-### Webhook Payload
-
-Each POS line is sent to your n8n webhook as:
-
+The transaction summary payload contains:
 ```json
 {
-  "micromanager_id": "mmd-rv1-ddeeff-0",
-  "device_name": "POS Terminal 101",
-  "pos_type": "verifone_commander",
-  "raw_line": "07/11/25 03:33:19 102 COCA COLA 1 2.50",
-  "timestamp": "2025-01-15T10:30:45.123Z",
-  "line_length": 42
+  "micromanager_id": "string",
+  "device_name": "string",
+  "terminal_id": "aa:bb:cc:dd:ee:ff",
+  "transaction_number": "1023612",
+  "drawer_id": "1",
+  "store_id": "AB123",
+  "started_at": "ISO8601",
+  "ended_at": "ISO8601",
+  "item_count": 3,
+  "total": 27.54,
+  "tenders": { "cash": 20.0, "debit": 7.54 },
+  "line_count": 9,
+  "parser_version": "v1.0.0"
 }
 ```
 
-### HTTP Headers
+## Docker
 
-```
-Content-Type: application/json
-X-Device-ID: mmd-rv1-ddeeff-0
-X-Device-Name: POS Terminal 101
-X-POS-Type: verifone_commander
-User-Agent: SimplifiedMicromanager/mmd-rv1-ddeeff-0
-```
-
-## 🛡️ Reliability Features
-
-### Local Backup
-
-- **Daily Files**: `transaction-logs/raw_data-YYYY-MM-DD.json`
-- **Failed Webhooks**: `transaction-logs/failed_webhooks-YYYY-MM-DD.json`
-- **30-Day Retention**: Automatic cleanup of old backup files
-- **Zero Data Loss**: All POS data preserved locally regardless of network status
-
-### Network Resilience
-
-- **Exponential Backoff**: 1s, 2s, 4s retry delays
-- **Offline Queuing**: Failed webhook calls queued for retry
-- **Auto-Recovery**: Automatic reconnection when network restored
-- **Batch Processing**: Queued items sent in sequence after reconnection
-```
-
-## 📈 Pattern Discovery Workflow
-
-1. **Monitor Dashboard**: Unknown patterns ranked by frequency
-2. **Analyze Patterns**: High-frequency unknowns become parsing candidates  
-3. **Create Regex**: System suggests patterns, developer refines
-4. **Deploy Update**: Add to parser configuration
-5. **Track Success**: Measure parsing improvement
-
-## 🎥 Frigate Integration
-
-Automatic video event creation:
-
-```javascript
-// Transaction starts → Create Frigate event
-POST /api/events/:camera_name/:label/create
-
-// Transaction ends → End Frigate event  
-PUT /api/events/:event_id/end
-```
-
-Event naming: `transaction-{uuid-last-6}-{timestamp}`
-
-## 💾 Backup & Recovery
-
-- **Hourly JSON logs**: Complete transaction data with video event IDs
-- **30-day retention**: Automatic cleanup of old logs
-- **Failed line backup**: Network failures don't lose data
-- **Parse error preservation**: Even unparsable data is saved
-
-## 🔍 Monitoring & Health
-
+A production container can be built with the included Dockerfile:
 ```bash
-# Health check endpoint
-curl http://localhost:3001/health
-
-# Parser statistics  
-curl http://localhost:3001/parser-stats
-
-# Service status (Linux)
-sudo systemctl status micromanager-pos
+docker build -t micromanager-edge .
 ```
 
-## 📋 Database Schema
-
-### Core Tables
-
-- `transactions`: Complete transaction records
-- `transaction_lines`: Individual receipt lines (real-time)
-- `pattern_discoveries`: Unknown pattern tracking
-- `parser_configurations`: Parser version history
-
-### Key Fields for Analysis
-
-```sql
-transaction_lines:
-  - raw_line: Original POS data
-  - parsed_successfully: Boolean success flag
-  - needs_analysis: Marks unknown patterns
-  - analysis_priority: high/medium/low/critical
-  - matched_patterns: Which regex patterns matched
-  - extraction_confidence: 0-100 parsing confidence
+Sample compose service snippet (joining Frigate on `nvrnet`):
+```yaml
+micromanager:
+  build: ./micromanager
+  networks: [nvrnet]
+  restart: unless-stopped
+  devices:
+    - /dev/ttyUSB0:/dev/ttyUSB0
+    - /dev/ttyUSB1:/dev/ttyUSB1
+  env_file:
+    - /opt/micromanager/.env
+  environment:
+    N8N_LINES_URL: https://n8n.../webhook/transaction_lines
+    N8N_TXNS_URL:  https://n8n.../webhook/transactions
+    FRIGATE_BASE:  http://frigate:5000
+    POST_LINES_AS_BATCH: "true"
 ```
-
-## 🚀 Production Deployment
-
-### Linux Systemd Service
-
+Prepare the host environment once:
 ```bash
-# Install service
-sudo cp scripts/micromanager-pos.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable micromanager-pos
-sudo systemctl start micromanager-pos
-
-# Monitor logs
-sudo journalctl -u micromanager-pos -f
+sudo mkdir -p /opt/micromanager
+./scripts/get-host-mac.sh | sudo tee /opt/micromanager/.env
+echo "MICROMANAGER_ID=$(cat /etc/machine-id)" | sudo tee -a /opt/micromanager/.env
+echo "DEVICE_NAME=$(hostname -s)" | sudo tee -a /opt/micromanager/.env
 ```
 
-### Environment Variables
+## Testing
 
+Use the bundled Jest suite and mocked serial port:
 ```bash
-NODE_ENV=production
-LOG_LEVEL=info
-HEALTH_CHECK_PORT=3001
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
 npm test
-
-# Watch mode for development
-npm run test:watch
-
-# Specific test suites
-npm test -- --testNamePattern="VerifoneCommanderParser"
 ```
 
-## 📚 Documentation
+The tests cover parser accuracy, state-machine transitions, and transaction roll-up/queue integration using captured journal snippets.
 
-- **SQL Queries**: `sql/03_analysis_queries.sql` - Ready-to-use pattern analysis
-- **Parser Examples**: `src/parsers/` - Reference implementations
-- **Configuration**: `config/micromanager.json` - Complete POS type definitions
+## Troubleshooting
 
-## 🛠️ Extending the System
+- **No serial data** – ensure the container has access to `/dev/ttyUSB*` and that `SERIAL_BAUD` matches the Commander configuration.
+- **Queue growth** – check `/healthz` for `queue_depth`; the queue trims automatically beyond 7 days or 500 MB but may indicate downstream network issues.
+- **Frigate failures** – verify `FRIGATE_BASE`, camera name, and remote role header. Errors are logged but do not block transaction delivery.
 
-### Adding New POS Types
+## License
 
-1. Create parser class extending `BasePOSParser`
-2. Define patterns in configuration
-3. Add to parser factory in `src/app.js`
-4. Test with unknown line analysis
-
-### Custom Analysis
-
-```javascript
-// Export parser statistics
-const stats = app.exportParserStats();
-
-// Custom pattern discovery
-const recommendations = parser.generateRecommendations();
-```
-
-## 🆘 Troubleshooting
-
-### Common Issues
-
-**Serial Port Access**:
-```bash
-sudo usermod -a -G dialout $USER
-# Logout and login again
-```
-
-**Parsing Issues**:
-```sql
--- Check recent unknown lines
-SELECT * FROM unknown_patterns_analysis 
-WHERE created_at >= NOW() - INTERVAL '1 hour';
-```
-
-**Performance**:
-```bash
-# Check memory usage
-curl http://localhost:3001/health | jq '.memoryUsage'
-```
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch
-3. Add tests for new functionality
-4. Submit pull request
-
-## 📞 Support
-
-- **Documentation**: Check SQL files and code comments
-- **Issues**: Unknown patterns should be analyzed via dashboard
-- **Health Monitoring**: Use `/health` endpoint for system status
-
----
-
-**Built for reliable, intelligent POS data capture with zero data loss and continuous learning.**
+MIT

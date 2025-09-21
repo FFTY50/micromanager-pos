@@ -1,0 +1,30 @@
+{
+  "parserVersion": "v1.0.0",
+  "posType": "verifone_commander",
+  "serial": {
+    "baud": 9600,
+    "autoDetectPrefix": "/dev/ttyUSB",
+    "paths": ["/dev/ttyUSB0", "/dev/ttyUSB1", "/dev/ttyUSB2", "/dev/ttyUSB3"]
+  },
+  "ignorePrefixes": ["ALARM"],
+  "postLinesAsBatch": true,
+  "queue": {
+    "dbPath": "/var/lib/micromanager/queue.db",
+    "maxBytes": 500000000,
+    "maxAgeSeconds": 604800,
+    "trimBatchSize": 250
+  },
+  "frigate": {
+    "enabled": true,
+    "baseUrl": null,
+    "cameraName": null,
+    "label": "transaction",
+    "durationSeconds": 900,
+    "remoteRoleHeader": "admin",
+    "retainOnComplete": false
+  },
+  "server": {
+    "port": 3000,
+    "host": "0.0.0.0"
+  }
+}
