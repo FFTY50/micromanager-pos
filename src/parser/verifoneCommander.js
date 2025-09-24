@@ -12,6 +12,7 @@ const RE = {
   DEBIT: new RegExp(`^${TS_PREFIX}DEBIT\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
   CREDIT: new RegExp(`^${TS_PREFIX}CREDIT\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
   PREAUTH: new RegExp(`^${TS_PREFIX}PREAUTH\\s+(?<amount>-?\\d+(?:\\.\\d{1,2})?)\\s*$`),
+  AGE_VERIFICATION: new RegExp(`^${TS_PREFIX}DOB Verification:\\s+(?<result>[A-Z ]+?)(?:\\s+Trans#(?<transaction>\\d+))?\\s*$`, 'i'),
   ITEM: /^(?<desc>.+?)\s+(?<qty>-?\d+(?:\.\d+)?)\s+(?<amount>-?\d+(?:\.\d{1,2})?)$/,
   IGNORE: /^ALARM\b/i,
 };
@@ -66,6 +67,17 @@ function classify(raw) {
   if (mCredit) return { type: 'credit', line, amount: Number(mCredit.groups.amount) };
   const mPreauth = line.match(RE.PREAUTH);
   if (mPreauth) return { type: 'preauth', line, amount: Number(mPreauth.groups.amount) };
+  const mAge = line.match(RE.AGE_VERIFICATION);
+  if (mAge) {
+    const result = mAge.groups.result.trim().replace(/\s+/g, ' ').toUpperCase();
+    return {
+      type: 'age_verification',
+      line,
+      desc: 'DOB Verification: ' + result,
+      status: result,
+      transactionNumber: mAge.groups.transaction || null,
+    };
+  }
   const mItem = line.match(RE.ITEM);
   if (mItem) {
     return {

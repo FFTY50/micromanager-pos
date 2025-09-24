@@ -47,7 +47,8 @@ The service runs your current repo entrypoint `app/src/index.js` and reads insta
    Optional:
    - `TERMINAL_ID`, `STORE_ID`, `DRAWER_ID`
    - `HEALTH_PORT` (defaults 3300/3301)
-   - Frigate settings (`FRIGATE_*`)
+   - Frigate settings (`FRIGATE_*`, plus `FRIGATE_URL` for the public viewer link)
+   - `MICROMANAGER_ID` (defaults to `mmd-rv1-<last6 MAC>-<port>` when omitted)
 
 3. Restart the instances to apply changes:
 
@@ -84,7 +85,7 @@ The service runs your current repo entrypoint `app/src/index.js` and reads insta
   - `FRIGATE_BASE=http://127.0.0.1:5000`
 - You can override at any time in the instance env files:
   - `/etc/micromanager/edge-ttyUSB0.env`, `/etc/micromanager/edge-ttyUSB1.env`
-  - Set both `FRIGATE_BASE` (used by the app) and, if needed, `FRIGATE_URL` (used by DeviceInitializer)
+- Set both `FRIGATE_BASE` (local/internal API target) and `FRIGATE_URL` (public link surfaced in webhook payloads)
 
 ## Coexistence with legacy services
 

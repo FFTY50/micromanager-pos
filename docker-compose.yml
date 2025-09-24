@@ -46,6 +46,7 @@ services:
     environment:
       N8N_LINES_URL: https://n8n-vcni0-u35184.vm.elestio.app/webhook/transaction_lines
       N8N_TXNS_URL:  https://n8n-vcni0-u35184.vm.elestio.app/webhook/transactions
+      FRIGATE_URL:   https://rockhill-trey.us2.pitunnel.net/
       FRIGATE_BASE:  http://frigate:5000
       SERIAL_BAUD:   "9600"
       POST_LINES_AS_BATCH: "true"

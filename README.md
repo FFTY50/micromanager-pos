@@ -53,6 +53,7 @@ src/server/{health,metrics}.js
    # optional overrides
    export SERIAL_PORT=/dev/ttyUSB0
    export SERIAL_BAUD=9600
+   export FRIGATE_URL=https://rockhill-trey.us2.pitunnel.net/
    # Single-line posting (default). Set to true only if you need batch inserts
    export POST_LINES_AS_BATCH=false
    # Frigate: local default
@@ -74,7 +75,9 @@ src/server/{health,metrics}.js
 - `SERIAL_PORT` – explicit serial device (otherwise autodetects `/dev/ttyUSB*`).
 - `SERIAL_BAUD` – defaults to 9600.
 - `POST_LINES_AS_BATCH` – when `false` (default), posts each line individually for realtime updates; when `true`, posts a single `{ lines: [...] }` array per transaction (batch mode).
+- `FRIGATE_URL` – public URL surfaced to n8n payloads (e.g. Pitunnel/Cloudflare link to Frigate UI).
 - `FRIGATE_*` variables – control camera name, label, duration, remote-role header, and retention behaviour.
+- `MICROMANAGER_ID` – defaults to `mmd-rv1-<last6 MAC>-<port>` (e.g. `mmd-rv1-2461b4-0`); override only if you need a custom identifier.
 - `QUEUE_DB_PATH`, `QUEUE_MAX_BYTES`, `QUEUE_MAX_AGE_SECONDS` – tune SQLite queue location and retention limits.
 
 All defaults are defined in `config/defaults.json` and merged with environment overrides at runtime.
@@ -117,6 +120,8 @@ The transaction summary payload contains:
   "store_id": "AB123",
   "started_at": "ISO8601",
   "ended_at": "ISO8601",
+  "video_start_time": "ISO8601",
+  "video_end_time": "ISO8601",
   "item_count": 3,
   "total": 27.54,
   "tenders": { "cash": 20.0, "debit": 7.54 },
@@ -159,6 +164,19 @@ sudo mkdir -p /opt/micromanager
 echo "MICROMANAGER_ID=$(cat /etc/machine-id)" | sudo tee -a /opt/micromanager/.env
 echo "DEVICE_NAME=$(hostname -s)" | sudo tee -a /opt/micromanager/.env
 ```
+
+### Runtime layout
+
+When installed with the systemd helper scripts, each edge instance spreads a few pieces across the host:
+
+- `/etc/systemd/system/micromanager-edge@.service` – systemd template that launches the Node process.
+- `/etc/micromanager/edge-<port>.env` – per-instance environment variables (`N8N_LINES_URL`, serial settings, etc.).
+- `/opt/micromanager-edge-<port>/` – instance directory containing the symlinked `app/` repo and JSON log files.
+- `/opt/micromanager-pos/` – actual working copy of this repository that the instances execute.
+- `/var/lib/micromanager/edge-<port>/queue.db*` – persisted SQLite queue storing pending webhook jobs.
+- `journalctl -u micromanager-edge@<port>` – system journal stream for stdout/stderr from the service.
+
+Use these paths when diagnosing queue state, editing env vars, or redeploying code.
 
 ## Testing
 

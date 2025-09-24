@@ -22,4 +22,14 @@ describe('verifoneCommander parser', () => {
     expect(classify('SODA 2 3.00')).toMatchObject({ type: 'item', desc: 'SODA', qty: 2, amount: 3 });
     expect(classify('ALARM DOOR')).toMatchObject({ type: 'ignore' });
   });
+
+  test('classify recognises DOB verification lines', () => {
+    const raw = '\u001bc0\u000109/24/25 07:23:04 101 DOB Verification: BYPASS Trans#1011395';
+    expect(classify(raw)).toMatchObject({
+      type: 'age_verification',
+      status: 'BYPASS',
+      desc: 'DOB Verification: BYPASS',
+      transactionNumber: '1011395',
+    });
+  });
 });

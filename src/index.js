@@ -9,22 +9,33 @@ const { requestJson } = require('./http/client');
 const { makeFrigateClient } = require('./http/frigate');
 const { createMetricsRegistry } = require('./server/metrics');
 const { startHealthServer } = require('./server/health');
+const { deriveMicromanagerId } = require('./utils/micromanagerId');
 
 const SerialPort = SerialPortModule.SerialPort || SerialPortModule;
 
 const N8N_LINES_URL = process.env.N8N_LINES_URL || null;
 const N8N_TXNS_URL = process.env.N8N_TXNS_URL || null;
-const MICROMANAGER_ID = process.env.MICROMANAGER_ID || process.env.DEVICE_ID || os.hostname();
+
+const SERIAL_BAUD = Number(process.env.SERIAL_BAUD || defaults.serial.baud || 9600);
+const SERIAL_PORT_ENV = process.env.SERIAL_PORT || null;
+const DEFAULT_SERIAL_PORT = Array.isArray(defaults.serial?.paths) && defaults.serial.paths.length > 0
+  ? defaults.serial.paths[0]
+  : '/dev/ttyUSB0';
+
+const MICROMANAGER_ID = deriveMicromanagerId({
+  env: process.env,
+  serialPort: SERIAL_PORT_ENV,
+  fallbackSerialPort: DEFAULT_SERIAL_PORT,
+});
+
 const DEVICE_NAME = process.env.DEVICE_NAME || os.hostname();
 const TERMINAL_ID = (process.env.TERMINAL_ID || process.env.HOST_ETH0_MAC || process.env.HOST_WLAN0_MAC || process.env.HOST_WLAN_MAC || 'unknown').toLowerCase();
 const STORE_ID_ENV = process.env.STORE_ID || null;
 const DRAWER_ID_ENV = process.env.DRAWER_ID || null;
-
-const SERIAL_BAUD = Number(process.env.SERIAL_BAUD || defaults.serial.baud || 9600);
-const SERIAL_PORT_ENV = process.env.SERIAL_PORT || null;
 const POST_LINES_AS_BATCH = (process.env.POST_LINES_AS_BATCH || String(defaults.postLinesAsBatch)) !== 'false';
 
 const FRIGATE_BASE = process.env.FRIGATE_BASE || defaults.frigate.baseUrl;
+const FRIGATE_PUBLIC_URL = process.env.FRIGATE_URL || process.env.FRIGATE_PUBLIC_URL || null;
 const FRIGATE_ENABLED = (process.env.FRIGATE_ENABLED || '').toLowerCase() !== 'false' && Boolean(FRIGATE_BASE);
 const FRIGATE_CAMERA_NAME = process.env.FRIGATE_CAMERA_NAME || process.env.FRIGATE_CAMERA || DEVICE_NAME;
 const FRIGATE_LABEL = process.env.FRIGATE_LABEL || defaults.frigate.label;
@@ -73,7 +84,7 @@ function applyMetaToLines(txn) {
 
 function applyFrigateToLines(txn) {
   if (!txn?.frigateEvent) return;
-  const url = txn.frigateEvent.eventUrl || null;
+  const url = FRIGATE_PUBLIC_URL || txn.frigateEvent.eventUrl || null;
   txn.lines.forEach((line) => {
     line.frigate_url = url;
   });
@@ -123,6 +134,8 @@ async function finalizeTransaction(txn, nowMs) {
       preauth_amount: typeof tenderTotals.preauth === 'number' ? tenderTotals.preauth : null,
       transaction_started_at: txn.startedAt,
       transaction_completed_at: endedAt,
+      video_start_time: txn.startedAt,
+      video_end_time: endedAt,
       frigate_event_id: txn.frigateEvent?.eventId || null,
       pos_metadata: {
         parser_version: VERSION,
@@ -133,6 +146,7 @@ async function finalizeTransaction(txn, nowMs) {
 
     const linePayloads = txn.lines.map((line) => ({
       ...line,
+      frigate_url: FRIGATE_PUBLIC_URL || line.frigate_url || null,
       pos_metadata: { ...line.pos_metadata },
     }));
 
@@ -340,7 +354,20 @@ async function processQueue() {
     logger.info('queue: job delivered', { id: job.id, topic: job.topic, latency });
     setImmediate(processQueue);
   } catch (err) {
-    logger.warn('queue: job delivery failed', { id: job.id, error: err.message });
+    const responseBody = typeof err.body === 'string' ? err.body : null;
+    const responsePreview = responseBody && responseBody.length > 256
+      ? `${responseBody.slice(0, 256)}…`
+      : responseBody;
+
+    logger.warn('queue: job delivery failed', {
+      id: job.id,
+      topic: job.topic,
+      url: job.url,
+      tries: job.tries,
+      error: err.message,
+      status: err.status || null,
+      response_preview: responsePreview || null,
+    });
     queue.mark(job.id, false);
     setTimeout(processQueue, 1000);
   }
