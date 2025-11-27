@@ -1,16 +1,19 @@
 const { splitMashedEnd, classify } = require('../parser/verifoneCommander');
+const { randomUUID } = require('crypto');
 
 function makeTxnMachine({ onStart, onLine, onEnd, onParseError }) {
   let state = 'IDLE';
   let pos = 0;
   let meta = null;
   let startedAt = null;
+  let currentTxnId = null;
 
   function reset() {
     state = 'IDLE';
     pos = 0;
     meta = null;
     startedAt = null;
+    currentTxnId = null;
   }
 
   function emitLine(payload) {
@@ -24,7 +27,8 @@ function makeTxnMachine({ onStart, onLine, onEnd, onParseError }) {
       if (['item', 'total', 'cash', 'debit', 'unknown'].includes(c.type)) {
         state = 'IN_TXN';
         startedAt = new Date(nowMs).toISOString();
-        if (typeof onStart === 'function') onStart(nowMs);
+        currentTxnId = randomUUID();
+        if (typeof onStart === 'function') onStart(nowMs, currentTxnId);
       } else {
         return;
       }
@@ -43,11 +47,11 @@ function makeTxnMachine({ onStart, onLine, onEnd, onParseError }) {
       onParseError({ nowMs, raw });
     }
 
-    emitLine({ nowMs, pos: pos++, c, meta, startedAt, raw });
+    emitLine({ nowMs, pos: pos++, c, meta, startedAt, raw, txnId: currentTxnId });
 
     if (c.type === 'cashier') {
       if (typeof onEnd === 'function') {
-        onEnd({ nowMs, meta, startedAt, lastPos: pos });
+        onEnd({ nowMs, meta, startedAt, lastPos: pos, txnId: currentTxnId });
       }
       reset();
     }
@@ -60,7 +64,8 @@ function makeTxnMachine({ onStart, onLine, onEnd, onParseError }) {
         if (state === 'IDLE') {
           state = 'IN_TXN';
           startedAt = new Date(nowMs).toISOString();
-          if (typeof onStart === 'function') onStart(nowMs);
+          currentTxnId = randomUUID();
+          if (typeof onStart === 'function') onStart(nowMs, currentTxnId);
         }
         const [hdr, csh] = pair;
         const headerClass = classify(hdr);

@@ -32,7 +32,6 @@ const DEVICE_NAME = process.env.DEVICE_NAME || os.hostname();
 const TERMINAL_ID = (process.env.TERMINAL_ID || process.env.HOST_ETH0_MAC || process.env.HOST_WLAN0_MAC || process.env.HOST_WLAN_MAC || 'unknown').toLowerCase();
 const STORE_ID_ENV = process.env.STORE_ID || null;
 const DRAWER_ID_ENV = process.env.DRAWER_ID || null;
-const POST_LINES_AS_BATCH = (process.env.POST_LINES_AS_BATCH || String(defaults.postLinesAsBatch)) !== 'false';
 
 const FRIGATE_BASE = process.env.FRIGATE_BASE || defaults.frigate.baseUrl;
 const FRIGATE_PUBLIC_URL = process.env.FRIGATE_URL || process.env.FRIGATE_PUBLIC_URL || null;
@@ -125,6 +124,7 @@ async function finalizeTransaction(txn, nowMs) {
       terminal_id: txn.meta?.terminal_id || TERMINAL_ID,
       pos_type: defaults.posType || null,
       transaction_number: txn.meta?.transaction_number || null,
+      transaction_uuid: txn.txnId || null,
       total_amount: totalLine ? totalLine.amount : null,
       item_count: items.length,
       line_count: txn.lines.length,
@@ -144,19 +144,8 @@ async function finalizeTransaction(txn, nowMs) {
       },
     };
 
-    const linePayloads = txn.lines.map((line) => ({
-      ...line,
-      frigate_url: FRIGATE_PUBLIC_URL || line.frigate_url || null,
-      pos_metadata: { ...line.pos_metadata },
-    }));
-
-    if (POST_LINES_AS_BATCH && N8N_LINES_URL) {
-      queue.push('transaction_lines', N8N_LINES_URL, { lines: linePayloads }, { 'content-type': 'application/json' });
-    } else if (N8N_LINES_URL) {
-      linePayloads.forEach((line) => {
-        queue.push('transaction_line', N8N_LINES_URL, line, { 'content-type': 'application/json' });
-      });
-    }
+    // Note: Lines are now streamed individually in onLine.
+    // We only send the transaction summary here.
 
     if (N8N_TXNS_URL) {
       queue.push('transactions', N8N_TXNS_URL, txnPayload, { 'content-type': 'application/json' });
@@ -187,16 +176,17 @@ async function finalizeTransaction(txn, nowMs) {
 }
 
 const machine = makeTxnMachine({
-  onStart(nowMs) {
+  onStart(nowMs, txnId) {
     const startedAt = new Date(nowMs).toISOString();
     currentTxn = {
       startedAt,
+      txnId,
       lines: [],
       meta: { terminal_id: TERMINAL_ID, drawer_id: DRAWER_ID_ENV || null, store_id: STORE_ID_ENV || null },
       eventPromise: null,
       frigateEvent: null,
     };
-    logger.info('transaction started', { started_at: startedAt });
+    logger.info('transaction started', { started_at: startedAt, txnId });
     if (FRIGATE_ENABLED) {
       currentTxn.eventPromise = frigateClient.startEvent({
         cameraName: FRIGATE_CAMERA_NAME,
@@ -211,10 +201,11 @@ const machine = makeTxnMachine({
       });
     }
   },
-  onLine({ nowMs, pos, c }) {
+  onLine({ nowMs, pos, c, txnId }) {
     if (!currentTxn) {
       currentTxn = {
         startedAt: new Date(nowMs).toISOString(),
+        txnId,
         lines: [],
         meta: { terminal_id: TERMINAL_ID, drawer_id: DRAWER_ID_ENV || null, store_id: STORE_ID_ENV || null },
         eventPromise: null,
@@ -247,6 +238,7 @@ const machine = makeTxnMachine({
       parsed_successfully: c.type !== 'unknown',
       transaction_position: pos,
       transaction_number: currentTxn.meta.transaction_number || null,
+      transaction_uuid: txnId || null,
       pos_metadata: {
         pos_type: defaults.posType,
         parser_version: VERSION,
@@ -258,6 +250,12 @@ const machine = makeTxnMachine({
     };
 
     currentTxn.lines.push(line);
+
+    // Stream line immediately
+    if (N8N_LINES_URL) {
+      queue.push('transaction_line', N8N_LINES_URL, line, { 'content-type': 'application/json' });
+    }
+
     metrics.incCounter('micromanager_lines_processed_total', 1);
     if (c.type === 'unknown') {
       metrics.incCounter('micromanager_parse_errors_total', 1);
