@@ -114,6 +114,13 @@ for PORT in "${PORTS[@]}"; do
   chmod 755 "$QUEUE_DIR"
   echo -e "${GREEN}✓ Created queue directory: $QUEUE_DIR${NC}"
   
+  # Calculate per-instance health port (3300 + last digit of port name)
+  DEFAULT_HEALTH_PORT="3300"
+  if [[ "$PORT" =~ ([0-9]+)$ ]]; then
+    LAST_DIGIT="${BASH_REMATCH[1]}"
+    DEFAULT_HEALTH_PORT=$((3300 + LAST_DIGIT))
+  fi
+  
   # Update or create env file
   if [[ -f "$ENV_FILE" ]]; then
     # Check if QUEUE_DB_PATH is already set
@@ -127,6 +134,20 @@ for PORT in "${PORTS[@]}"; do
       sed -i "s|^QUEUE_DB_PATH=.*|QUEUE_DB_PATH=$QUEUE_DIR/queue.db|" "$ENV_FILE"
       echo -e "${GREEN}✓ Updated QUEUE_DB_PATH in $ENV_FILE${NC}"
     fi
+    
+    # Check if HEALTH_PORT is already set
+    if ! grep -q "^HEALTH_PORT=" "$ENV_FILE"; then
+      echo "# Per-instance health server port" >> "$ENV_FILE"
+      echo "HEALTH_PORT=$DEFAULT_HEALTH_PORT" >> "$ENV_FILE"
+      echo -e "${GREEN}✓ Added HEALTH_PORT=$DEFAULT_HEALTH_PORT to $ENV_FILE${NC}"
+    else
+      # Update existing HEALTH_PORT if it's the default (3000) or missing
+      if grep -q "^HEALTH_PORT=3000" "$ENV_FILE" || ! grep -q "^HEALTH_PORT=" "$ENV_FILE"; then
+        sed -i "s|^HEALTH_PORT=.*|HEALTH_PORT=$DEFAULT_HEALTH_PORT|" "$ENV_FILE"
+        echo -e "${GREEN}✓ Updated HEALTH_PORT to $DEFAULT_HEALTH_PORT in $ENV_FILE${NC}"
+      fi
+    fi
+    
     chmod 640 "$ENV_FILE"
     chown "$SERVICE_USER:$SERVICE_USER" "$ENV_FILE"
   else
@@ -135,6 +156,7 @@ for PORT in "${PORTS[@]}"; do
 SERIAL_PORT=/dev/$PORT
 DEVICE_NAME=register-$PORT
 QUEUE_DB_PATH=$QUEUE_DIR/queue.db
+HEALTH_PORT=$DEFAULT_HEALTH_PORT
 ENVEOF
     chmod 640 "$ENV_FILE"
     chown "$SERVICE_USER:$SERVICE_USER" "$ENV_FILE"
