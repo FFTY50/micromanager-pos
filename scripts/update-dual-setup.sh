@@ -81,6 +81,9 @@ ExecStart=/usr/bin/node app/src/index.js
 EnvironmentFile=/etc/micromanager/%i.env
 Restart=always
 RestartSec=10
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=10
 StandardOutput=journal
 StandardError=journal
 
